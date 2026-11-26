@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { BookOpenText } from 'lucide-react';
+import { usePreferences } from '../../preferences';
 import { fileUrl } from '../courses/student/api';
 import { useOnlineStatus } from '../offline/online';
 import { loadBranding, type Branding } from './api';
@@ -13,6 +14,7 @@ const BrandingContext = createContext<{ branding: Branding; refresh: () => void 
 
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const [branding, setBranding] = useState(defaultBranding);
+  const { setDefaultTheme } = usePreferences();
   const [revision, setRevision] = useState(0);
   const online = useOnlineStatus();
   const refresh = useCallback(() => setRevision(value => value + 1), []);
@@ -24,6 +26,10 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     }, () => undefined);
     return () => controller.abort();
   }, [revision, online]);
+  useEffect(() => {
+    const setting = branding.defaultTheme;
+    setDefaultTheme(setting === 'light' || setting === 'dark' ? setting : 'system');
+  }, [branding.defaultTheme, setDefaultTheme]);
   useEffect(() => {
     const icon = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
     if (!icon) return;

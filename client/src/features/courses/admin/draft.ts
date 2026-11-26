@@ -1,4 +1,5 @@
-import type { ChapterInput, CourseInput, CourseRecord, LessonInput, LessonResource } from './api';
+import type { ChapterInput, CourseInput, CourseRecord, CourseTranslation, LessonInput, LessonResource, LessonTranslation } from './api';
+import { blankProvenance } from '../Provenance';
 
 type LocalResource = Omit<LessonResource, 'mediaId'> & { key: string; mediaId: string | null };
 export type LocalLesson = Omit<LessonInput, 'resources'> & { key: string; resources: LocalResource[] };
@@ -10,11 +11,11 @@ function key() {
 }
 
 export const emptyChapterTranslation = (locale: string) => ({ locale, title: '' });
-export const emptyLessonTranslation = (locale: string) => ({ locale, title: '', description: '', body: '' });
-export const emptyCourseTranslation = (locale: string) => ({ locale, title: '', description: '', objectives: '', prerequisites: '' });
+export const emptyLessonTranslation = (locale: string): LessonTranslation => ({ locale, title: '', description: '', body: '' });
+export const emptyCourseTranslation = (locale: string): CourseTranslation => ({ locale, title: '', description: '', objectives: '', prerequisites: '' });
 export const emptyChapter = (locale: string): LocalChapter => ({ key: key(), translations: [emptyChapterTranslation(locale)], lessons: [] });
 export const emptyLesson = (locale: string): LocalLesson => ({
-  key: key(), slug: '', kind: 'text', mediaId: null, translations: [emptyLessonTranslation(locale)], resources: [],
+  key: key(), slug: '', kind: 'text', mediaId: null, quizId: null, translations: [emptyLessonTranslation(locale)], resources: [],
 });
 export const emptyResource = (): LocalResource => ({ key: key(), mediaId: null, label: '' });
 
@@ -27,6 +28,7 @@ export function toDraft(record: CourseRecord | undefined, locale: string, previo
     thumbnailId: record?.thumbnailId ?? null,
     estimatedMinutes: record?.estimatedMinutes?.toString() ?? '',
     instructor: record?.instructor ?? '',
+    provenance: record ? record.provenance : { ...blankProvenance },
     tagIds: record?.tagIds ?? [],
     relatedCourseIds: record?.relatedCourseIds ?? [],
     translations: record?.translations ?? [emptyCourseTranslation(locale)],
@@ -80,6 +82,7 @@ export function prepareCourse(draft: CourseDraft): { input: CourseInput } | { er
         slug: lesson.slug.trim().toLowerCase(),
         kind: lesson.kind,
         mediaId: lesson.mediaId,
+        quizId: lesson.quizId,
         translations: lesson.translations,
         resources: lesson.resources.flatMap(resource =>
           resource.mediaId ? [{ mediaId: resource.mediaId, label: resource.label }] : []),

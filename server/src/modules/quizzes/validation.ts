@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { educationStatuses } from '../education/contract';
+import { provenanceInput } from '../courses/provenance';
 import { canonicalMediaLocale } from '../media/contract';
 import { normalizeAnswer, questionKinds, quizQuestionLimit, type QuestionInput } from './contract';
 
@@ -16,9 +17,11 @@ const options = Joi.array().items(Joi.number().integer().min(0).max(7)).max(8).u
 
 const question = {
   kind: kind.required(),
+  provenance: provenanceInput,
   correctOptions: options,
   translations: Joi.array().min(1).max(6).unique('locale').items(Joi.object({
     locale: locale.required(), prompt: requiredText(300), explanation: text(400),
+    provenance: provenanceInput,
     options: Joi.array().items(Joi.string().trim().min(1).max(100)).max(8).default([]),
     acceptedAnswers: Joi.array().items(Joi.string().trim().min(1).max(100)).max(8).default([]),
   })).required(),
@@ -26,10 +29,12 @@ const question = {
 
 const quiz = {
   slug: slug.required(), courseId: id.allow(null).default(null),
+  provenance: provenanceInput,
   passingScore: Joi.number().integer().min(1).max(100).default(70),
   questionIds: Joi.array().items(id).max(quizQuestionLimit).unique().default([]),
   translations: Joi.array().min(1).max(6).unique('locale').items(Joi.object({
     locale: locale.required(), title: requiredText(150), description: text(500),
+    provenance: provenanceInput,
   })).required(),
 };
 
@@ -68,5 +73,5 @@ const paging = {
 };
 
 export const adminQuery = Joi.object({ ...paging, status });
-export const publicQuery = Joi.object({ ...paging, language: locale, courseId: id });
+export const publicQuery = Joi.object({ ...paging, language: locale, courseId: id, standalone: Joi.boolean() });
 export const bankQuery = Joi.object({ ...paging, kind });

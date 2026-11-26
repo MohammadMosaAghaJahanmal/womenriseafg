@@ -688,3 +688,112 @@ The tested production build uses the existing same-origin Node and MySQL archite
 Stage 13 covers shared hosting deployment preparation. It requires separate owner approval.
 
 **STAGE 12 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**
+
+
+## Stage 13 — Shared hosting deployment preparation
+
+**Completed on 26 November 2026.** The release archive and cPanel runbook are ready for the hosting plan review. Provider and plan confirmation remain pending. All execution used local, isolated fixtures.
+
+### Implementation and preserved functionality
+
+- `npm run package:deployment -- /absolute/private/path/womenriseafg-deployment.tar.gz` builds into fresh temporary directories, checks the frontend output against the same public asset rules used by Express, and creates a release archive with a SHA-256 digest. The archive contains `app.js`, compiled client and server, package manifests and lockfile, configuration template, and the deployment runbook. Source, test fixtures, build metadata, credentials, database dumps, uploads and installed packages stay outside the archive.
+- The production entry still serves the React site, Express API and permission-checked media on one origin. It recognizes the native Passenger loader and its private Unix socket and uses Passenger's authenticated HTTPS and client-address metadata. The explicitly configured TCP proxy path also passed. Ordinary forwarding headers do not grant HTTPS status in Passenger mode. [Passenger reverse port binding](https://www.phusionpassenger.com/docs/advanced_guides/in_depth/node/reverse_port_binding.html) · [Passenger secure HTTP headers](https://www.phusionpassenger.com/docs/advanced_guides/in_depth/node/secure_http_headers.html)
+- The cPanel runbook covers setup and provider checks, the HTTPS origin and Apache routing, private storage and permissions, MySQL users and migration, administrator bootstrap, cron and restart, staged verification, backup and restore, upgrading, rollback and troubleshooting. [cPanel Application Manager](https://docs.cpanel.net/cpanel/software/application-manager/)
+
+### Release
+
+| Check | Result |
+| --- | --- |
+| Filename | `womenriseafg-stage-13-deployment.tar.gz` |
+| Archive size | 3,535,719 bytes |
+| SHA-256 | `a696e1a5a2572bc30d2ecc538b35b03db522310872a6bea943d4d6c35851ebcb` |
+| Contents | 325 archive entries including directories, with 86 public build files and the associated compressed variants |
+| Host install | `npm ci --omit=dev --ignore-scripts --workspace @womenriseafg/server` |
+
+### Files, database and interface
+
+| Files | Change |
+| --- | --- |
+| `scripts/package-deployment.mjs`, `package.json`, `eslint.config.mjs` | Release command, clean compilation, archive validation and checksum |
+| `client/vite.config.ts` | Resolve the PWA manifest from the actual chosen build directory |
+| `server/src/app.ts`, `server/src/config/staticAssets.ts`, `server/src/index.ts` | Shared public asset policy and native Passenger transport while retaining TCP support |
+| `server/tests/transport.test.ts` | Passenger IPC and trusted TCP transport regression tests |
+| `docs/DEPLOYMENT.md`, `README.md`, `docs/PROGRESS.md` | Hosting runbook, operating instructions and this verification record |
+
+The release uses the existing MySQL schema, browser storage format and interface. The existing migrations ran with a separate migration user, then reported current on rerun. A DML-only runtime user started the application. The extracted release preserved free guest learning, published content and media rights, keyboard navigation and opt-in offline features in local checks. All 12 original design references matched their SHA-256 baseline.
+
+### Testing results
+
+The local build, tests and production install used Node 22.14.0 and npm 11.21.3. `$work` denotes the private scratch directory containing test harnesses and synthetic data.
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck`, `npm run build`, `git diff --check` | Passed. The client built with 20 Workbox precache entries. |
+| `npm test` with `WOMENRISEAFG_IDENTITY_TEST=1` and isolated MySQL 8.0.31 | 38 passed, zero failures and zero skips, including three transport tests. |
+| `npm run package:deployment`, `tar -tzf`, `tar -xzf`, and locked server workspace install | Passed. Inspected archive contents and verified the digest of the delivered copy. The install added 127 packages on Windows and Linux. |
+| `npm audit`, `npm audit --omit=dev`, and production server workspace audit | Zero known vulnerabilities in each run. |
+| `npm run dev` and `node $work/stage13-production.cjs` | Development HTML and proxied readiness returned 200. The extracted release ran migrations, bootstrapped the test administrator and restarted on local HTTPS with persistent MySQL and media. |
+| `node $work/stage13-links.cjs` and `node $work/stage13-cache-check.cjs` | Verified 30 homepage destinations, 86 public build files, three manifest icons, SPA fallback, expected 401 and 404 responses, compressed JavaScript, worker revalidation and private route no-store headers. |
+| `node $work/stage13-learner-flow.cjs` and `node $work/stage13-offline-flow.cjs` | Chrome verified guest lessons, video and PDF progress, captions and transcript, quiz scoring, certificate privacy, offline opt-in, saves and clearing, download permissions and cold offline playback. |
+| `node $work/stage13-backup-restore.cjs` and `node $work/stage13-restored-smoke.cjs` | Logical MySQL export and media archive restored to independent empty locations. All 41 table counts and checksums and all nine media SHA-256 hashes matched. The restored app returned 200 readiness and served the exact requested video bytes with HTTP 206. |
+| `npm run auth:purge-sessions` and `node $work/stage13-maintenance.cjs` | The extracted CLI ran successfully. In the restored fixture it removed an expired session and preserved an active one. Eight Bash runbook snippets and the cron command passed syntax checks. |
+| `stage13-linux-package.sh` via WSL Ubuntu 22.04.5 | Installed and ran the exact archive with Ubuntu's Passenger 6.0.10 Node loader and the verified Linux Node binary. Confirmed Unix-socket bootstrap, health, safe readiness failure without a database, SPA fallback, worker revalidation, protected headers and distinct client-address rate buckets. Apache integration was outside this local loader test. |
+
+The development and production processes and the local database were stopped. Temporary credentials and the test TLS private key were removed.
+
+### Hosting compatibility and remaining checks
+
+Confirm the selected plan's Node and Passenger versions, MySQL features and grants, Apache and HTTPS behavior, local streaming permission and byte-range behavior, CPU and RAM limits, upload and request limits, disk and inode quotas, bandwidth, scheduled jobs, and backup and restore support. The runbook lists the evidence to obtain for each item. A local Passenger loader check cannot replace an authorized test on that host.
+
+The build reports existing Zod annotation and bundle-size notices. The staged client build also reports that its fresh output directory is outside the project root. The locked install reports an existing transitive `dottie` deprecation. During a native Passenger restart, a protected request still draining after listener closure can be denied. The runbook uses a maintenance window for release changes.
+
+### Next stage
+
+Stage 14 is the final production readiness review. It requires separate owner approval.
+
+**STAGE 13 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**
+
+
+## Stage 14 — Final production readiness review
+
+**Review completed on 26 November 2026. Production approval remains pending.** The [requirements traceability report](READINESS.md) maps the master brief to implementation, verification and open items. Stage 14 changed `docs/READINESS.md`, `README.md` and this progress record. The existing interface, runtime code, schema and release package remain in use.
+
+### Verification
+
+- `npm run lint`, `npm run typecheck`, `npm run build` and `git diff --check` passed. `npm audit` and `npm audit --omit=dev` reported zero known vulnerabilities.
+- `npm test` ran with `WOMENRISEAFG_IDENTITY_TEST=1` on isolated MySQL 8.0.31. All 38 tests passed with zero skips. The schema contained 41 InnoDB tables and 11 migration records. Separate migration and DML users worked.
+- `npm run package:deployment`, extraction and locked server install passed. All 300 files matched the Stage 13 delivery by relative path and SHA-256. Development and extracted production startup passed, including local HTTPS, migrations and administrator bootstrap.
+- Chrome verified guest and account flows, authoring through real administrator forms, permission-checked media, captions/transcripts, PDF, quizzes, paths, certificates, cache and offline workflows. The browser matrix ran 288 route checks, 48 homepage and 24 Downloads layouts, three localized offline fallbacks, and 69 scoped axe scans with zero violations. Firefox passed 30 localized route and viewport checks, PDF and video smoke, and an offline reload. The translation audit matched 17 bundles and 1,392 messages. All 12 design reference hashes matched.
+- Three completed `stage14-mobile-performance.cjs` pairs measured 497,818 versus 477,127 bytes and median LCP of 3.252 versus 2.844 seconds for standard and data-saving mode. Measured CLS was 0.092. One earlier throttled run timed out. See the report for the full method, ranges and limits. [Core Web Vitals](https://web.dev/articles/vitals)
+
+The local test processes stopped and temporary credentials were removed.
+
+### Release approval
+
+The hosting plan, live edge behavior and quotas remain unverified. Approved courses and media, publication rights and native-speaker review are pending. The report records incomplete administration, contributor assignment, content provenance, privacy retention, correction reporting and manual accessibility checks. The master brief has no stage after Stage 14. Further scope requires separate owner approval.
+
+**STAGE 14 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**
+
+
+## Readiness follow-up — Owner-authorized completion work
+
+**Local implementation and verification completed on 26 November 2026.** The owner will handle hosting and approved launch materials. The [follow-up report](READINESS-FOLLOW-UP.md) records the changes, archive checksum and verification limits.
+
+Delivered scoped staff roles and course assignments, published collections, image and inline quiz lessons, authoring provenance, localized illustration text, anonymous corrections and privacy guidance, certificate settings and verification withdrawal, owner operations, a site appearance default and current-page admin sorting. Course cards now support local save and resume. A localized Retry action handles failed route assets.
+
+- Applied seven additive migrations on isolated MySQL 8.0.31 for 18 ledger entries and 50 tables. Ran the production migration command twice. The extracted app used the DML-only runtime login.
+- `npm run lint`, `npm run typecheck`, `npm run build`, `npm run package:deployment` and `git diff --check` passed. `npm test` passed all 42 tests with identity integration enabled. Both dependency audits reported zero known vulnerabilities.
+- Real HTTPS browser checks covered staff, collections, certificate settings, corrections, illustrations, image and quiz lessons, operations, local course actions and offline learning. The Chrome matrix ran 324 route checks, 48 homepage layouts and 60 scoped axe scans. Firefox performed 30 route and viewport checks, PDF and video smoke and a cold offline reload. Three locales passed keyboard recovery after a simulated bundle failure on the delivered build.
+- A local slow-mobile pair measured 502,025 versus 481,334 transferred bytes and 3.116 versus 2.088 seconds LCP in standard and data-saving modes, with CLS 0.014. The report records the earlier throttled asset failure that prompted the retry handling.
+- The runtime installed on Windows and ran locally under the Linux Passenger loader. All release runtime files tested on Linux matched the delivered server payload by SHA-256. The twelve design reference hashes matched. Temporary services and credentials were removed.
+
+The remaining host-specific, device and approved-content checks are documented for the owner's launch. Contributor assignments cover course workflows, with other authoring already available through the existing module permissions.
+
+
+## Local WAMP setup — 26 November 2026
+
+Created the utf8mb4 `womenriseafg` database in WAMP MySQL 8.0.31 on loopback port 3306. The ignored local `.env` uses the requested root connection with a blank database password and the development defaults.
+
+- `npm run build` compiled both workspaces. `npm run db:migrate` applied the migrations, and the second run reported the schema current. The migration ledger has 18 entries.
+- The bootstrap CLI created the local super administrator `womenrise-admin`. The browser and API verified administrator sign-in, the Staff and assignments grant and sign-out.
+- `npm run dev` was left running in the background. Vite returned HTTP 200 on port 5173 and Express readiness confirmed the MySQL connection on port 3000. The guest catalogue returned 19 categories.

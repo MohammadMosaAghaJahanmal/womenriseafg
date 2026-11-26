@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Button, Card, InputField, Pagination, SelectField, StatePanel } from '../../components/ui/Primitives';
 import { educationError, educationPath, listEducation, localeName, preferredName, statuses, type EducationRecord, type Kind, type Status } from './api';
+import { usePageOrder } from '../admin/PageOrder';
 import { EducationHeading, EducationNavigation } from './EducationIndex';
 import { useEducationData } from './useEducationData';
 
@@ -90,6 +91,8 @@ export function EducationList({ kind }: { kind: Kind }) {
   const page = Number.isSafeInteger(pageInput) ? Math.max(1, Math.min(pageInput, 100000)) : 1;
   const load = useCallback((signal: AbortSignal) => listEducation(kind, { q: query || undefined, status, page, pageSize: 10 }, signal), [kind, query, status, page]);
   const { result, reload } = useEducationData(load);
+  const order = usePageOrder(result.status === 'ready' ? result.data.items : [],
+    (item, locale) => preferredName(item, locale)?.name ?? item.slug);
   const pages = result.status === 'ready' ? Math.max(1, Math.ceil(result.data.total / result.data.pageSize)) : 1;
   useEffect(() => {
     if (result.status === 'ready' && page > pages) {
@@ -151,7 +154,8 @@ export function EducationList({ kind }: { kind: Kind }) {
         </StatePanel>}
         {result.status === 'ready' && (result.data.items.length > 0 ? <>
           <p className="education-results" role="status">{t('resultCount', { count: result.data.total, amount: numeric.format(result.data.total) })}</p>
-          <EducationTable kind={kind} records={result.data.items} />
+          <div className="admin-page-order">{order.field}</div>
+          <EducationTable kind={kind} records={order.items} />
           <Pagination page={page} pages={pages} label={t('pagination')} previous={t('previous')} next={t('next')}
             pageLabel={t('page', { page: numeric.format(page), pages: numeric.format(pages) })} onChange={selectPage} />
         </> : <StatePanel kind="empty" title={t(matches ? 'noResults' : 'empty')} description={t(matches ? 'filterHint' : 'emptyHint')} />)}

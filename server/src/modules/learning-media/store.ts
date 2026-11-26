@@ -137,6 +137,9 @@ export function createLearningMediaStore(db: Sequelize, { shortMaxSeconds }: { s
     await validateCategory(input.categoryId, transaction, true);
     await validateLanguages(input.translations, transaction, true);
     await validateAsset(input, asset, transaction, access);
+    if (asset.kind === 'image' && input.translations.some(translation => !translation.imageAlt?.trim())) {
+      throw new LearningMediaError('MISSING_IMAGE_ALT');
+    }
     return asset;
   }
 

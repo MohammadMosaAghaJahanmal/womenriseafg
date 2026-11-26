@@ -8,10 +8,16 @@ import { EducationMigrationError, migrateEducation } from '../modules/education/
 import { MediaMigrationError, migrateMedia } from '../modules/media/migration';
 import { CourseMigrationError, migrateCourses } from '../modules/courses/migration';
 import { LearningMediaMigrationError, migrateLearningMedia } from '../modules/learning-media/migration';
+import { LearningMediaAltMigrationError, migrateLearningMediaAltText } from '../modules/learning-media/altMigration';
 import { BookMigrationError, migrateBooks } from '../modules/books/migration';
 import { QuizMigrationError, migrateQuizzes } from '../modules/quizzes/migration';
-import { DiscoveryMigrationError, migrateDiscovery } from '../modules/discovery/migration';
+import { DiscoveryMigrationError, migrateCollections, migrateDiscovery } from '../modules/discovery/migration';
 import { CertificateMigrationError, migrateCertificates } from '../modules/certificates/migration';
+import { migrateCertificateManagement } from '../modules/certificates/management';
+import { CorrectionMigrationError, migrateCorrections } from '../modules/corrections/migration';
+import { StaffMigrationError, migrateStaff } from '../modules/staff/migration';
+import { migrateOperations, OperationsMigrationError } from '../modules/operations/migration';
+import { CurriculumAuthoringMigrationError, migrateCurriculumAuthoring } from '../modules/courses/authoringMigration';
 import { HomepageMigrationError, migrateHomepage } from '../modules/homepage/migration';
 import { IdentityMigrationError, migrateIdentity } from './migration';
 import {
@@ -66,6 +72,13 @@ async function run(args: string[]) {
       console.log(await migrateDiscovery(db) ? 'Discovery migration applied.' : 'Discovery schema is current.');
       console.log(await migrateCertificates(db) ? 'Certificate migration applied.' : 'Certificate schema is current.');
       console.log(await migrateHomepage(db) ? 'Homepage migration applied.' : 'Homepage schema is current.');
+      console.log(await migrateStaff(db) ? 'Staff migration applied.' : 'Staff schema is current.');
+      console.log(await migrateCurriculumAuthoring(db) ? 'Curriculum authoring migration applied.' : 'Curriculum authoring schema is current.');
+      console.log(await migrateCorrections(db) ? 'Correction migration applied.' : 'Correction schema is current.');
+      console.log(await migrateCollections(db) ? 'Collection migration applied.' : 'Collection schema is current.');
+      console.log(await migrateCertificateManagement(db) ? 'Certificate management migration applied.' : 'Certificate management schema is current.');
+      console.log(await migrateLearningMediaAltText(db) ? 'Illustration descriptions migration applied.' : 'Illustration descriptions schema is current.');
+      console.log(await migrateOperations(db) ? 'Operations migration applied.' : 'Operations schema is current.');
       return;
     }
     const store = createIdentityStore(db);
@@ -92,7 +105,9 @@ void run(process.argv.slice(2)).catch(error => {
       error instanceof EducationMigrationError || error instanceof MediaMigrationError ||
       error instanceof CourseMigrationError || error instanceof LearningMediaMigrationError || error instanceof BookMigrationError ||
       error instanceof QuizMigrationError || error instanceof DiscoveryMigrationError || error instanceof CertificateMigrationError ||
-      error instanceof HomepageMigrationError) {
+      error instanceof HomepageMigrationError || error instanceof CorrectionMigrationError ||
+      error instanceof StaffMigrationError || error instanceof CurriculumAuthoringMigrationError ||
+      error instanceof LearningMediaAltMigrationError || error instanceof OperationsMigrationError) {
     console.error(error.message);
   } else {
     console.error('Identity command failed. Check the database connection, permissions, and migration status.');

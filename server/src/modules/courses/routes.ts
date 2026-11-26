@@ -13,6 +13,7 @@ import {
   type CourseInput, type CourseListOptions, type CourseRecord, type CourseStatus,
 } from './contract';
 import type { CourseStore } from './store';
+import { publicProvenance } from './provenance';
 import { adminQuery, assetsQuery, courseId, courseSlug, deleteCourse, lessonSlug,
   newCourse, publicQuery, statusChange, updateCourse } from './validation';
 
@@ -26,10 +27,11 @@ const failures = {
   NOT_FOUND: [404, 'Course or lesson not found.'],
   CONFLICT: [409, 'The course slug is in use or this entry is still referenced.'],
   STALE_VERSION: [409, 'The course changed. Reload it and try again.'],
-  INVALID_REFERENCE: [422, 'Select available course, taxonomy, language, or media resources.'],
+  INVALID_REFERENCE: [422, 'Select available courses, taxonomy, languages, media, or standalone quizzes.'],
   INVALID_TRANSITION: [409, 'This status change is unavailable.'],
   INCOMPLETE_COURSE: [422, 'Add a chapter, a lesson, and its required content before publishing.'],
   RESOURCE_DOWNLOAD_FORBIDDEN: [422, 'Choose a downloadable attachment or a resource that can be opened inline.'],
+  INCOMPLETE_PROVENANCE: [422, 'Record the source, creator, license, and any AI use before approval or publication.'],
 } as const;
 
 const handleCourseError: ErrorRequestHandler = (error: unknown, _request, _response, next) => {
@@ -51,7 +53,9 @@ function projectCourse(course: CourseRecord) {
       resourceLabels: lesson.resources.map(({ label }) => label),
     })),
   }));
-  return { id, slug, subjectId, levelId, gradeId, thumbnailId, estimatedMinutes, instructor, status, updatedAt, translations,
+  return { id, slug, subjectId, levelId, gradeId, thumbnailId, estimatedMinutes, instructor, status, updatedAt,
+    provenance: publicProvenance(course.provenance),
+    translations: translations.map(({ provenance, ...translation }) => ({ ...translation, provenance: publicProvenance(provenance) })),
     chapters, lessonCount: chapters.reduce((total, chapter) => total + chapter.lessons.length, 0) };
 }
 
@@ -108,15 +112,18 @@ export function createCourseRoutes(store: CourseStore, media: MediaStore, identi
     if (!current) throw new CourseError('NOT_FOUND');
 
     const { id, translations, mediaId, kind } = current;
-    const [mediaFile, resourceFiles] = await Promise.all([
+    const [mediaFile, resourceFiles, quizSlug] = await Promise.all([
       mediaId ? media.findPublic(mediaId) : Promise.resolve(null),
       Promise.all(current.resources.map(async ({ mediaId, label }) => ({
         mediaId, label, media: projectMedia(await media.findPublic(mediaId)),
       }))),
+      current.quizId ? store.lessonQuizSlug(current.quizId) : null,
     ]);
+    if (kind === 'quiz' && !quizSlug) throw new CourseError('NOT_FOUND');
     response.json({
       course: projectCourse(course),
-      lesson: { id, slug: current.slug, translations, mediaId, kind },
+      lesson: { id, slug: current.slug, mediaId, kind, quizSlug,
+        translations: translations.map(({ provenance, ...translation }) => ({ ...translation, provenance: publicProvenance(provenance) })) },
       previous: lessons[position - 1]?.slug ?? null,
       next: lessons[position + 1]?.slug ?? null,
       media: projectMedia(mediaFile),
@@ -137,6 +144,9 @@ export function createCourseRoutes(store: CourseStore, media: MediaStore, identi
     const item = await media.findPublic(courseKey(response));
     if (!item) throw new CourseError('NOT_FOUND');
     response.json({ item: projectAssetChoice(item) });
+  });
+  admin.get('/quiz-options/:id', validateId, async (_request, response) => {
+    response.json({ titles: await store.lessonQuizTitles(courseKey(response)) });
   });
   admin.get('/:id', validateId, async (_request, response) => {
     response.json({ item: await store.get(courseKey(response)) });

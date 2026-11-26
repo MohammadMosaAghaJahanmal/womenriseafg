@@ -3,6 +3,8 @@ import type { DiscoverableKind } from '../discovery/contract';
 export const homepageManagePermission = 'homepage:manage';
 export const interfaceLocales = ['en', 'ps', 'fa-AF'] as const;
 export type InterfaceLocale = (typeof interfaceLocales)[number];
+export const siteThemes = ['system', 'light', 'dark'] as const;
+export type SiteTheme = (typeof siteThemes)[number];
 export const sectionKeys = [
   'announcements', 'continue', 'subjects', 'featured', 'popular', 'recommendedCourses',
   'videos', 'shorts', 'books', 'ai', 'paths', 'daily', 'recent', 'mission',
@@ -15,6 +17,7 @@ export interface HomepageBranding {
   name: string;
   logoId: string | null;
   faviconId: string | null;
+  defaultTheme?: SiteTheme;
   translations: BrandingTranslation[];
 }
 export interface AnnouncementTranslation { locale: InterfaceLocale; title: string; body: string }
@@ -49,7 +52,7 @@ export class HomepageError extends Error {
 }
 
 export const defaultSettings: Omit<HomepageSettings, 'version'> = {
-  branding: { name: 'womenriseafg', logoId: null, faviconId: null, translations: [
+  branding: { name: 'womenriseafg', logoId: null, faviconId: null, defaultTheme: 'system', translations: [
     { locale: 'en', slogan: 'A place to learn and grow.',
       mission: 'Free learning for Afghan girls and women, in Pashto, Dari and English.' },
     { locale: 'ps', slogan: 'د زده‌کړې او ودې ځای.',

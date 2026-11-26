@@ -152,11 +152,28 @@ function PdfLesson({ media }: { media: PublicMedia }) {
   </div>;
 }
 
-export function LessonMedia({ media, kind, locale, study }: {
-  media: PublicMedia | null; kind: 'audio' | 'video' | 'pdf'; locale: string; study?: LearningResource;
+function ImageLesson({ media, alt, locale }: { media: PublicMedia; alt: string; locale: string }) {
+  const { enabled: saving } = useDataSaving();
+  const { t } = useTranslation(courseNamespace);
+  const [opened, setOpened] = useState(false);
+  const [failed, setFailed] = useState(false);
+  return <div className="learn-panel learn-image-lesson">
+    {failed ? <StatePanel kind="error" title={t('mediaUnavailable')}>
+      <Button variant="secondary" onClick={() => setFailed(false)}>{t('retry')}</Button>
+    </StatePanel> : (opened || !saving)
+      ? <img src={fileUrl(media.id)} alt={alt} lang={locale} loading="lazy" decoding="async" onError={() => setFailed(true)} />
+      : <Button variant="secondary" onClick={() => setOpened(true)}>{t('loadImage')}</Button>}
+    <MediaActions media={media} />
+  </div>;
+}
+
+export function LessonMedia({ media, kind, locale, study, imageAlt }: {
+  media: PublicMedia | null; kind: 'audio' | 'video' | 'pdf' | 'image'; locale: string;
+  study?: LearningResource; imageAlt?: string;
 }) {
   const { t } = useTranslation(courseNamespace);
   if (!media || media.kind !== kind) return <StatePanel kind="error" title={t('mediaUnavailable')} />;
   if (kind === 'pdf') return <PdfLesson media={media} />;
+  if (kind === 'image') return <ImageLesson media={media} alt={imageAlt ?? media.title} locale={locale} />;
   return <Player media={media} locale={locale} study={study} />;
 }

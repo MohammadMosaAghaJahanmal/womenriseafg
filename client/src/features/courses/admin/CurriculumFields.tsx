@@ -1,11 +1,15 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useCallback, useRef, useState, type DragEvent } from 'react';
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, DialogClose, InputField, PanelDialog, SelectField } from '../../../components/ui/Primitives';
 import type { EducationRecord } from '../../education/api';
+import { useEducationData } from '../../education/useEducationData';
+import { RightsFields } from '../Provenance';
+import { listPublishedQuizzes } from '../../quizzes/api';
+import { QuizPicker } from '../../quizzes/AdminFields';
 import { AssetSelection } from './Choices';
 import { TextArea, TranslationFields } from './EditorFields';
-import { lessonKinds, preferredTitle, type LessonKind } from './api';
+import { getLessonQuizTitles, lessonKinds, preferredTitle, type LessonKind } from './api';
 import { emptyChapter, emptyChapterTranslation, emptyLesson, emptyLessonTranslation, emptyResource, moveItem, type LocalChapter, type LocalLesson } from './draft';
 
 type DragItem = { chapterKey: string; lessonKey?: string };
@@ -108,11 +112,14 @@ function LessonEditor({ lesson, item, index, count, chapters, languages, disable
           <div className="course-fields-grid">
             <InputField label={t('lessonSlug')} maxLength={80} value={lesson.slug} dir="ltr" autoComplete="off" spellCheck={false} aria-required
               onChange={event => change({ ...lesson, slug: event.target.value })} />
-            <SelectField label={t('type')} value={lesson.kind} onChange={event => change({ ...lesson, kind: event.target.value as LessonKind, mediaId: null })}>
+            <SelectField label={t('type')} value={lesson.kind} onChange={event => change({
+              ...lesson, kind: event.target.value as LessonKind, mediaId: null, quizId: null,
+            })}>
               {lessonKinds.map(kind => <option key={kind} value={kind}>{t(kind)}</option>)}
             </SelectField>
           </div>
-          {lesson.kind !== 'text' && <AssetSelection label={t('lessonFile')} picker={t('fileSearch')} kind={lesson.kind} value={lesson.mediaId}
+          {lesson.kind === 'quiz' ? <LessonQuizSelection quizId={lesson.quizId} change={quizId => change({ ...lesson, quizId })} disabled={disabled} />
+            : lesson.kind !== 'text' && <AssetSelection label={t('lessonFile')} picker={t('fileSearch')} kind={lesson.kind} value={lesson.mediaId}
             onChange={mediaId => change({ ...lesson, mediaId })} disabled={disabled} />}
         </fieldset>
         <TranslationFields records={languages} values={lesson.translations} onChange={translations => change({ ...lesson, translations })}
@@ -121,6 +128,9 @@ function LessonEditor({ lesson, item, index, count, chapters, languages, disable
               locale={translation.locale} direction={direction} />
             <TextArea label={t('body')} value={translation.body} onChange={body => patch({ body })} maxLength={12000} rows={5}
               locale={translation.locale} direction={direction} />
+            {lesson.kind === 'image' && <TextArea label={t('imageAlt')} value={translation.imageAlt ?? ''} onChange={imageAlt => patch({ imageAlt })}
+              maxLength={500} rows={2} locale={translation.locale} direction={direction} />}
+            <RightsFields value={translation.provenance} onChange={provenance => patch({ provenance })} optional disabled={disabled} />
           </>} />
         <ResourceFields lesson={lesson} change={change} disabled={disabled} />
         {!disabled && <div className="course-row-footer">
@@ -134,6 +144,31 @@ function LessonEditor({ lesson, item, index, count, chapters, languages, disable
       </div>}
     </details>
   </li>;
+}
+
+function LessonQuizSelection({ quizId, change, disabled }: {
+  quizId?: string | null; change: (id: string | null) => void; disabled: boolean;
+}) {
+  const { t, i18n } = useTranslation('courseAdmin');
+  const load = useCallback(async (q: string, page: number, signal: AbortSignal) => {
+    const result = await listPublishedQuizzes({ q, page, pageSize: 10, standalone: true }, signal);
+    return { ...result, items: result.items.map(item => {
+      const title = preferredTitle(item.translations, i18n.language);
+      return { id: item.id, title: title?.title ?? item.slug, locale: title?.locale };
+    }) };
+  }, [i18n.language]);
+  const loadTitles = useCallback((signal: AbortSignal) => quizId ? getLessonQuizTitles(quizId, signal) : Promise.resolve([]), [quizId]);
+  const { result } = useEducationData(loadTitles);
+  const title = result.status === 'ready' ? preferredTitle(result.data, i18n.language) : undefined;
+  return <div className="course-choice">
+    <span className="course-label">{t('quiz')}</span>
+    {quizId && <span><bdi lang={title?.locale}>{title?.title ?? t('unavailableSelection')}</bdi></span>}
+    {!disabled && <div className="course-inline-fields">
+      <QuizPicker label={t('chooseQuiz')} searchLabel={t('quizSearch')} noMatches={t('noQuiz')}
+        load={load} select={item => change(item.id)} />
+      {quizId && <Button variant="ghost" onClick={() => change(null)}>{t('remove')}</Button>}
+    </div>}
+  </div>;
 }
 
 function ChapterEditor({ chapter, index, chapters, languages, locale, disabled, drag, change, remove, move, moveLesson }: {

@@ -54,9 +54,10 @@ function AccountForm({ mode }: { mode: AuthMode }) {
   async function submit(values: Credentials) {
     setError(undefined);
     try {
-      await authenticate(mode, values);
+      const user = await authenticate(mode, values);
       reset();
-      void navigate(path, { replace: true });
+      const target = mode === 'admin-login' && !user.permissions.includes('admin:access') ? '/staff' : path;
+      void navigate(target, { replace: true });
     } catch (failure) {
       resetField('password');
       setError(errorMessage(failure));
@@ -171,6 +172,7 @@ export function AccountPage() {
         {error && <p className="auth-warning" role="alert">{t(error)}</p>}
         <Button disabled={signingOut} onClick={() => void logout()}>{t(signingOut ? 'signingOut' : 'signOut')}</Button>
         {state.user.permissions.includes('admin:access') && <Button asChild variant="secondary"><Link to="/admin">{t('adminAccess')}</Link></Button>}
+        {state.user.permissions.includes('staff:workspace') && <Button asChild variant="secondary"><Link to="/staff">{t('staffAccess')}</Link></Button>}
       </div> : <div className="auth-identity">
         <p>{t('guestDescription')}</p>
         <div className="auth-links">

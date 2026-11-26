@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ForeignKeyConstraintError, QueryTypes, UniqueConstraintError, type Sequelize, type Transaction } from 'sequelize';
 import { publicCourse } from '../courses/reader';
+import { completeProvenance, emptyProvenance, publicProvenance } from '../courses/provenance';
 import { transitionAllowed, type EducationStatus } from '../education/contract';
 import { normalizeEducationSearch } from '../education/models';
 import { QuizError, type QuestionInput, type QuizAttempt, type QuizInput } from './contract';
@@ -92,8 +93,8 @@ export function createQuizStore(db: Sequelize) {
   }
 
   async function saveQuestionParts(questionId: string, input: QuestionInput, transaction: Transaction) {
-    await Prompt.bulkCreate(input.translations.map(({ locale, prompt, explanation }) => ({
-      questionId, locale, prompt, explanation, searchText: normalizeEducationSearch(prompt),
+    await Prompt.bulkCreate(input.translations.map(({ locale, prompt, explanation, provenance }) => ({
+      questionId, locale, prompt, explanation, provenance, searchText: normalizeEducationSearch(prompt),
     })), { transaction });
     if (input.kind === 'short-answer') {
       await AcceptedAnswer.bulkCreate(input.translations.flatMap(({ locale, acceptedAnswers }) =>
@@ -107,8 +108,9 @@ export function createQuizStore(db: Sequelize) {
   }
 
   function summary(question: Awaited<ReturnType<typeof requireQuestion>>) {
-    return { id: question.id, kind: question.kind, translations: question.translations.map(({ locale, prompt, options }) =>
-      ({ locale, prompt, options })) };
+    return { id: question.id, kind: question.kind, provenance: publicProvenance(question.provenance),
+      translations: question.translations.map(({ locale, prompt, options, provenance }) =>
+        ({ locale, prompt, options, provenance: publicProvenance(provenance) })) };
   }
 
   return {
@@ -153,7 +155,8 @@ export function createQuizStore(db: Sequelize) {
         await checkLocales(input.translations, transaction);
         const id = randomUUID();
         const now = new Date();
-        await Question.create({ id, version: 1, createdAt: now, updatedAt: now, kind: input.kind }, { transaction });
+        await Question.create({ id, version: 1, createdAt: now, updatedAt: now, kind: input.kind,
+          provenance: input.provenance ?? emptyProvenance }, { transaction });
         await saveQuestionParts(id, input, transaction);
         return requireQuestion(id, transaction);
       });
@@ -163,7 +166,8 @@ export function createQuizStore(db: Sequelize) {
       return write(async transaction => {
         const question = await lockedUnlinkedQuestion(id, version, transaction);
         await checkLocales(input.translations, transaction);
-        await question.update({ kind: input.kind, version: version + 1, updatedAt: new Date() }, { transaction });
+        await question.update({ kind: input.kind, provenance: input.provenance ?? question.getDataValue('provenance'),
+          version: version + 1, updatedAt: new Date() }, { transaction });
         await Option.destroy({ where: { questionId: id }, transaction });
         await Prompt.destroy({ where: { questionId: id }, transaction });
         await saveQuestionParts(id, input, transaction);
@@ -181,7 +185,8 @@ export function createQuizStore(db: Sequelize) {
         const id = randomUUID();
         const now = new Date();
         const { slug, courseId, passingScore } = input;
-        await Quiz.create({ id, slug, courseId, passingScore, status: 'draft', version: 1, createdAt: now, updatedAt: now }, { transaction });
+        await Quiz.create({ id, slug, courseId, passingScore, provenance: input.provenance ?? emptyProvenance,
+          status: 'draft', version: 1, createdAt: now, updatedAt: now }, { transaction });
         await saveQuizParts(id, input, transaction);
         return requireQuiz(id, transaction);
       });
@@ -193,7 +198,9 @@ export function createQuizStore(db: Sequelize) {
         if (!editable.includes(quiz.getDataValue('status'))) throw new QuizError('INVALID_TRANSITION');
         await checkQuiz(input, transaction);
         const { slug, courseId, passingScore } = input;
-        await quiz.update({ slug, courseId, passingScore, version: version + 1, updatedAt: new Date() }, { transaction });
+        if (courseId && !quiz.getDataValue('courseId')) await checkLessonReference(id, transaction, false);
+        await quiz.update({ slug, courseId, passingScore, provenance: input.provenance ?? quiz.getDataValue('provenance'),
+          version: version + 1, updatedAt: new Date() }, { transaction });
         await Link.destroy({ where: { quizId: id }, transaction });
         await QuizTranslation.destroy({ where: { quizId: id }, transaction });
         await saveQuizParts(id, input, transaction);
@@ -205,10 +212,18 @@ export function createQuizStore(db: Sequelize) {
       return write(async transaction => {
         const quiz = await lockedQuiz(id, version, transaction);
         if (!transitionAllowed(quiz.getDataValue('status'), status)) throw new QuizError('INVALID_TRANSITION');
+        if (status === 'archived') await checkLessonReference(id, transaction, true);
         if (status === 'approved' || status === 'published') {
           const linked = await Link.findOne({ where: { quizId: id }, transaction });
           if (!linked || !(await reader.eligibleLocales(id, transaction)).length) throw new QuizError('INCOMPLETE_CONTENT');
           await checkCourse(quiz.getDataValue('courseId'), true, transaction);
+          const record = await requireQuiz(id, transaction);
+          const questions = await reader.questionsForQuiz(record.questionIds, undefined, false, transaction);
+          const translations = [...record.translations, ...questions.flatMap(question => question.translations)];
+          if ([record, ...questions].some(item => !completeProvenance(item.provenance)) ||
+              translations.some(item => item.provenance && !completeProvenance(item.provenance))) {
+            throw new QuizError('INCOMPLETE_PROVENANCE');
+          }
         }
         await quiz.update({ status, version: version + 1, updatedAt: new Date() }, { transaction });
         return requireQuiz(id, transaction);
@@ -219,10 +234,19 @@ export function createQuizStore(db: Sequelize) {
       return write(async transaction => {
         const quiz = await lockedQuiz(id, version, transaction);
         if (!removable.includes(quiz.getDataValue('status'))) throw new QuizError('INVALID_TRANSITION');
+        await checkLessonReference(id, transaction, false);
         await quiz.destroy({ transaction });
       });
     },
   };
+
+  async function checkLessonReference(id: string, transaction: Transaction, publishedOnly: boolean) {
+    const [reference] = await db.query<{ id: string }>(`
+      SELECT l.id FROM lessons l JOIN courses c ON c.id = l.course_id
+      WHERE l.quiz_id = :id ${publishedOnly ? "AND c.status = 'published'" : ''} LIMIT 1
+    `, { replacements: { id }, type: QueryTypes.SELECT, transaction });
+    if (reference) throw new QuizError('QUIZ_IN_USE');
+  }
 }
 
 export type QuizStore = ReturnType<typeof createQuizStore>;

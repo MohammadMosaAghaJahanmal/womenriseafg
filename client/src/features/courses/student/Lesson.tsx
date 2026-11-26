@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -15,6 +15,9 @@ import {
 } from './components';
 import { LessonMedia, MediaActions } from './LessonMedia';
 import { courseNamespace } from './strings';
+import { ProvenanceNote } from '../Provenance';
+
+const LessonQuiz = lazy(() => import('../../quizzes/Student').then(module => ({ default: module.LessonQuiz })));
 
 function LessonCurriculum({ course, lesson, preference, explicit }: Pick<LessonResponse, 'course' | 'lesson'> & {
   preference: string; explicit?: string;
@@ -78,6 +81,9 @@ export default function LessonPage() {
   const study = { kind: 'lesson' as const, id: lesson.id, slug: lesson.slug, parentSlug: course.slug,
     title: translation.title, locale: translation.locale };
   const offlineFile = offlineMediaFile(media);
+  const offlineBody = lesson.kind === 'image'
+    ? [translation.body, translation.imageAlt].filter(text => text?.trim()).join('\n\n')
+    : translation.body;
   return <div className="learn-page learn-lesson">
     <BackLink to={coursePath(course.slug, language.explicit)}><bdi lang={courseName.locale}>{courseName.title}</bdi></BackLink>
     <header className="learn-lesson-header">
@@ -88,10 +94,10 @@ export default function LessonPage() {
         <h1 lang={translation.locale} dir="auto">{translation.title}</h1>
         {translation.description && <p className="learn-prose" lang={translation.locale} dir="auto">{translation.description}</p>}
         <ContentLanguageNotice preferred={language.preferred} actual={translation.locale} />
-        {(translation.body.trim() || offlineFile) && <div className="learning-actions">
+        {(offlineBody.trim() || offlineFile) && <div className="learning-actions">
           <OfflineSave resource={{ key: offlineResourceKey('lesson', lesson.id, translation.locale),
             kind: 'lesson', title: translation.title, description: translation.description,
-            locale: translation.locale, body: translation.body, file: offlineFile }} />
+            locale: translation.locale, body: offlineBody, file: offlineFile }} />
         </div>}
       </div>
       {lessonLocales.length === 1 ? <AvailableLanguages locales={lessonLocales} label={t('lessonLanguages')} />
@@ -100,11 +106,15 @@ export default function LessonPage() {
     <div className="learn-lesson-layout">
       <LessonCurriculum course={course} lesson={lesson} preference={language.preferred} explicit={language.explicit} />
       <div className="learn-lesson-content">
-        {lesson.kind !== 'text' && <LessonMedia key={lesson.id} media={media} kind={lesson.kind} locale={translation.locale} study={study} />}
+        {lesson.kind === 'quiz' && lesson.quizSlug ? <Suspense fallback={<LearnerState state="loading" retry={reload} />}>
+          <LessonQuiz slug={lesson.quizSlug} />
+        </Suspense> : lesson.kind !== 'text' && lesson.kind !== 'quiz' &&
+          <LessonMedia key={lesson.id} media={media} kind={lesson.kind} locale={translation.locale} study={study} imageAlt={translation.imageAlt} />}
         {translation.body && <article className="learn-panel learn-article" lang={translation.locale}>
           {translation.body.split(/\r?\n[ \t]*\r?\n/).filter(Boolean).map((paragraph, index) =>
             <p className="learn-prose" dir="auto" key={index}>{paragraph}</p>)}
         </article>}
+        <ProvenanceNote value={translation.provenance ?? courseName.provenance ?? course.provenance} />
         {resources.length > 0 && <section className="learn-panel learn-resources" aria-labelledby="learn-resources-heading">
           <h2 id="learn-resources-heading">{t('resources')}</h2>
           <ul>{resources.map(resource => <li key={resource.mediaId}>

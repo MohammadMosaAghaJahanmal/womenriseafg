@@ -6,6 +6,7 @@ import type { IdentitySession, IdentityStore } from '../../identity/store';
 import { ApiError } from '../../middleware/errors';
 import { validateInput } from '../../middleware/validation';
 import { requireOriginAndJson, requireSecureTransport } from '../auth/request';
+import { publicProvenance } from '../courses/provenance';
 import { loadIdentity, requirePermission, sessionCookie } from '../auth/session';
 import type { EducationStatus } from '../education/contract';
 import {
@@ -32,6 +33,8 @@ const failures = {
   QUESTION_IN_USE: [409, 'This question is used in a quiz. Unlink it or add a replacement question.'],
   INVALID_REFERENCE: [422, 'Select valid languages, questions or a course.'],
   INCOMPLETE_CONTENT: [422, 'Add questions and a published language shared by the quiz and all questions.'],
+  INCOMPLETE_PROVENANCE: [422, 'Record the source, creator, license, and any AI use for the quiz and questions.'],
+  QUIZ_IN_USE: [409, 'This quiz is used by a lesson. Remove the reference before making this change.'],
   INVALID_ATTEMPT: [400, 'Submit one valid response for each question.'],
 } as const;
 
@@ -45,7 +48,8 @@ const handleError: ErrorRequestHandler = (error: unknown, _request, _response, n
 
 function publicQuiz(quiz: QuizRecord) {
   const { id, slug, courseId, courseSlug, version, passingScore, translations, questionCount } = quiz;
-  return { id, slug, courseId, courseSlug, version, passingScore, translations, questionCount };
+  return { id, slug, courseId, courseSlug, version, passingScore, questionCount, provenance: publicProvenance(quiz.provenance),
+    translations: translations.map(({ provenance, ...translation }) => ({ ...translation, provenance: publicProvenance(provenance) })) };
 }
 
 function key(response: Response) {

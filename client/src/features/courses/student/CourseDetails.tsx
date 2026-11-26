@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useEducationData } from '../../education/useEducationData';
 import { Recommendations } from '../../discovery/Cards';
 import { CourseLearning } from '../../engagement/CourseLearning';
+import { ProvenanceNote } from '../Provenance';
 import { findCourse, loadCourseFacts } from './api';
 import {
   AvailableLanguages, BackLink, chooseTranslation, ContentLanguageNotice, ContentLanguageSelect, CourseCard, CourseCover,
@@ -64,6 +65,7 @@ export default function CourseDetails() {
           selected={translation.locale} onSelect={language.setLanguage} />
       </aside>
       <div className="learn-detail-content">
+        <ProvenanceNote value={translation.provenance ?? course.provenance} />
         {translation.objectives && <section className="learn-panel" aria-labelledby="learn-objectives">
           <h2 id="learn-objectives">{t('objectives')}</h2>
           <p className="learn-prose" lang={translation.locale} dir="auto">{translation.objectives}</p>

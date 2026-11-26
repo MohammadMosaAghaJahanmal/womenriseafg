@@ -46,6 +46,7 @@ export function defineLearningMediaModels(db: Sequelize) {
     locale: { type: DataTypes.STRING(35), primaryKey: true },
     title: { type: DataTypes.STRING(150), allowNull: false },
     description: { type: DataTypes.TEXT, allowNull: false },
+    imageAlt: { type: DataTypes.STRING(500), field: 'image_alt' },
     searchText: { type: DataTypes.TEXT, field: 'search_text', allowNull: false },
   }, { tableName: 'learning_media_translations', timestamps: false });
   return { Item, Translation };

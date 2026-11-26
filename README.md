@@ -1,15 +1,19 @@
 # womenriseafg
 
-womenriseafg is a free learning workspace for Afghan girls and women. Guests can browse published courses, videos, Shorts, reviewed AI learning resources and digital books, and choose an interface language and appearance. Optional accounts use a username and password. Upcoming sections and demonstration content are labeled in the interface.
+womenriseafg is a free learning workspace for Afghan girls and women. Guests can use published courses, media, books, quizzes and learning paths in Pashto, Dari or English. Optional accounts use a username and password. Progress, saved resources and offline learning can be enabled on the device.
 
 ## Pages
 
 | Address | What you can try |
 | --- | --- |
-| `/`, `/explore` | Browse the four subject areas and open a topic outline |
+| `/`, `/explore` | Browse published subjects and discover available learning materials |
 | `/courses`, `/courses/:slug`, `/learn/:courseSlug/:lessonSlug` | Browse published courses, open the curriculum, and take free lessons as a guest |
 | `/videos`, `/shorts`, `/ai-learning` | Browse and open free educational videos, vertical Shorts and reviewed AI learning resources |
 | `/library`, `/library/:slug`, `/library/:slug/read` | Browse free books, check publication details, and read PDFs online or download when permitted |
+| `/quizzes`, `/learning-paths`, `/daily-learning` | Take a quiz, follow an ordered path, or find a daily activity |
+| `/collections` | Browse named, reviewed course collections |
+| `/privacy`, `/report-correction` | Read the learner privacy notice or report an error on a published resource |
+| `/search`, `/saved`, `/my-learning`, `/downloads` | Search published content and manage optional local learning data |
 | `/settings` | Set the interface language and light, dark or system appearance |
 | `/status` | Run the Stage 1 public API connection check and retry after a failure |
 | `/register`, `/login`, `/account` | Create or sign in to an optional student account, review the current session, or sign out |
@@ -19,9 +23,11 @@ womenriseafg is a free learning workspace for Afghan girls and women. Guests can
 | `/admin/courses` | Build and order curricula, manage translations and resources, and publish reviewed courses |
 | `/admin/learning-media` | Prepare and review video, Short and AI resource entries for publication |
 | `/admin/books` | Upload or select book PDFs and covers, edit translations and publication details, and review books |
+| `/staff`, `/admin/staff` | Work on assigned courses or manage staff roles, assignments and the staff audit as the owner |
+| `/admin/corrections`, `/admin/certificates`, `/admin/operations` | Review corrections, configure certificates, or review system and recorded backup checks with the applicable grant |
 | `/design-preview` | Open the public Stage 2 component gallery and try its local examples |
 
-Explicit language and theme choices are saved in browser storage and can be cleared in Settings. The sign-in cookie is managed separately, and Account includes a sign-out action for shared devices. The page search covers workspace navigation. The public gallery uses sample data.
+Explicit language and theme choices are saved in browser storage and can be cleared in Settings. The sign-in cookie is managed separately, and Account includes a sign-out action for shared devices. Global search covers published learning resources and taxonomy. The component gallery labels its examples.
 
 ## Run locally
 
@@ -64,6 +70,8 @@ finally { Remove-Variable wraAdminPassphrase }
 ```
 
 Use `auth:recover` in the same command to set a replacement passphrase. Username rules allow 3–32 ASCII letters, digits and selected punctuation. Passphrases require 15–128 Unicode characters and a maximum of 512 UTF-8 bytes. The default learner session lifetime is eight hours, and the administrator lifetime is two hours. Schedule `npm run auth:purge-sessions` daily under the application account to remove expired records.
+
+Super administrators manage staff in **Staff and assignments**. Contributors sign in through the staff/administrator sign-in and open **Contributor workspace**. Their access applies to explicitly assigned courses and lanes. A role change expires existing sessions. Published course content and guest progress remain available to anonymous learners.
 
 ## Commands
 
@@ -220,4 +228,4 @@ The production server serves approved build assets and uses `no-store` and `noin
 - `AGENTS.md` records the owner's stage rules.
 - `How the complete website should look/` holds the owner's original local references. The directory is excluded from Git and build artifacts.
 
-The next planned stage is Stage 14, final production readiness review. It requires separate owner approval.
+The [readiness follow-up](docs/READINESS-FOLLOW-UP.md) records the local implementation and tests completed after the [Stage 14 review](docs/READINESS.md). Hosting and approved launch materials are owner-managed.

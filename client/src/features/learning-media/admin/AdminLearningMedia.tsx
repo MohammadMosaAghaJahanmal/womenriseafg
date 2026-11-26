@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Button, Card, InputField, SelectField, StatePanel } from '../../../components/ui/Primitives';
 import { preferredTitle } from '../../courses/admin/api';
+import { usePageOrder } from '../../admin/PageOrder';
 import { contentLanguageName } from '../../courses/admin/EditorFields';
 import { statuses } from '../../education/api';
 import { EducationStatus } from '../../education/EducationList';
@@ -67,6 +68,8 @@ function LearningMediaList() {
   const load = useCallback((signal: AbortSignal) => listEntries({ q, kind, status, aiOnly: aiOnly || undefined, page, pageSize: 12 }, signal),
     [q, kind, status, aiOnly, page]);
   const { result, reload } = useEducationData(load);
+  const order = usePageOrder(result.status === 'ready' ? result.data.items : [],
+    (item, locale) => preferredTitle(item.translations, locale)?.title ?? item.slug);
   const error = result.status === 'error' ? entryError(result.error, 'loadFailed') : '';
   const denied = error === 'sessionEnded' || error === 'noAccess';
 
@@ -116,8 +119,9 @@ function LearningMediaList() {
       {!denied && <Button variant="secondary" onClick={reload}>{t('retry')}</Button>}
     </StatePanel>}
     {result.status === 'ready' && (result.data.items.length ? <>
+      <div className="admin-page-order">{order.field}</div>
       <ul className="course-list learning-media-list" aria-label={t('title')}>
-        {result.data.items.map(entry => <EntryRow key={entry.id} entry={entry} search={search} />)}
+        {order.items.map(entry => <EntryRow key={entry.id} entry={entry} search={search} />)}
       </ul>
       {result.data.total > result.data.pageSize && <PageControls page={result.data.page}
         pages={Math.ceil(result.data.total / result.data.pageSize)} onChange={setPage} />}

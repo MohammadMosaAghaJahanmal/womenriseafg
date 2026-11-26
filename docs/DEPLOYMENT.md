@@ -24,6 +24,8 @@ Record the provider, exact plan, domain, account owner, and support reference be
 
 Prepare compressed video, audio, transcripts and captions off-server. Use reviewed variants and files with suitable publication and download rights.
 
+Use the [privacy operations guide](PRIVACY-OPERATIONS.md) to record retention decisions, verify the localized learner notice, and schedule approved maintenance. Keep the approved launch catalogue and its rights and review records with the deployment decision.
+
 ## Prepare and install the release
 
 On a development or release machine, install the locked dependencies and run the production packager. Supply a new filename in a private directory. The packager builds both workspaces and prints the archive's SHA-256. Transfer the archive and digest over an authenticated channel.

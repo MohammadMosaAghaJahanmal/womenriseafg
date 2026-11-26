@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button, InputField, SelectField, StatePanel } from '../../components/ui/Primitives';
 import { readIdentity } from '../auth/api';
 import { contentDirection, TextArea } from '../courses/admin/EditorFields';
+import { blankProvenance, RightsFields } from '../courses/Provenance';
 import { learnerLanguageName } from '../courses/student/components';
 import type { EducationRecord } from '../education/api';
 import { useEducationData } from '../education/useEducationData';
@@ -22,8 +23,8 @@ function blankQuestion(locale: string, options: string[] = ['', '']): QuestionTr
 }
 
 function questionDraft(locale: string, entry?: BankQuestion): QuestionInput {
-  return entry ? { kind: entry.kind, correctOptions: entry.correctOptions, translations: entry.translations } :
-    { kind: initialKind, correctOptions: [], translations: [blankQuestion(locale)] };
+  return entry ? { kind: entry.kind, correctOptions: entry.correctOptions, translations: entry.translations, provenance: entry.provenance } :
+    { kind: initialKind, correctOptions: [], translations: [blankQuestion(locale)], provenance: { ...blankProvenance } };
 }
 
 function normalizeDraft(input: QuestionInput): QuestionInput | undefined {
@@ -81,6 +82,7 @@ function QuestionForm({ entry, languages, reload }: { entry?: BankQuestion; lang
   function changeKind(kind: QuestionKind) {
     const keepChoices = (kind === 'single-choice' || kind === 'multiple-choice') && !short && !boolean;
     change(input => ({
+      ...input,
       kind,
       correctOptions: keepChoices ? input.correctOptions.slice(0, kind === 'single-choice' ? 1 : undefined) : [],
       translations: input.translations.map(copy => ({ ...copy, options: keepChoices ? copy.options : initialOptions(kind, copy.locale), acceptedAnswers: [] })),
@@ -177,6 +179,7 @@ function QuestionForm({ entry, languages, reload }: { entry?: BankQuestion; lang
         <SelectField label={t('type')} value={draft.kind} onChange={event => changeKind(event.target.value as QuestionKind)}>
           {questionKinds.map(kind => <option value={kind} key={kind}>{t(questionLabels[kind])}</option>)}
         </SelectField>
+        <RightsFields value={draft.provenance} onChange={provenance => change(input => ({ ...input, provenance }))} disabled={locked} />
         {!short && <div className="quiz-answer-key" role="group" aria-label={t('correctAnswer')}>
           <strong>{t('correctAnswer')}</strong>
           {multiple && <p className="quiz-help">{t('chooseMultiple')}</p>}
@@ -214,6 +217,8 @@ function QuestionForm({ entry, languages, reload }: { entry?: BankQuestion; lang
             <TextArea label={t('questionExplanation')} value={copy.explanation}
               onChange={value => changeTranslation(copy.locale, { explanation: value })}
               locale={copy.locale} direction={direction} maxLength={400} />
+            <RightsFields value={copy.provenance} onChange={provenance => changeTranslation(copy.locale, { provenance })}
+              optional disabled={locked} />
             {draft.translations.length > 1 && !locked && <Button variant="ghost" onClick={() => change(input => ({
               ...input, translations: input.translations.filter(item => item.locale !== copy.locale),
             }))}><X size={16} aria-hidden="true" />{t('removeTranslation', { language })}</Button>}

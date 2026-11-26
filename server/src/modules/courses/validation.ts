@@ -2,6 +2,7 @@ import Joi from 'joi';
 import { educationStatuses } from '../education/contract';
 import { canonicalMediaLocale, mediaKinds } from '../media/contract';
 import { lessonKinds, type CourseInput } from './contract';
+import { provenanceInput } from './provenance';
 
 const id = Joi.string().uuid({ version: 'uuidv4' });
 const slug = Joi.string().trim().lowercase().max(80).pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
@@ -18,7 +19,8 @@ const lesson = Joi.object({
   slug: slug.required(),
   kind: Joi.string().valid(...lessonKinds).required(),
   mediaId: nullableId,
-  translations: translations({ description: freeText(2400), body: freeText(12000) }),
+  quizId: nullableId,
+  translations: translations({ description: freeText(2400), body: freeText(12000), imageAlt: freeText(500), provenance: provenanceInput }),
   resources: Joi.array().items(Joi.object({ mediaId: id.required(), label: freeText(150) }))
     .unique('mediaId').max(12).default([]),
 });
@@ -35,9 +37,10 @@ const courseFields = {
   thumbnailId: nullableId,
   estimatedMinutes: Joi.number().integer().min(1).max(14400).allow(null).default(null),
   instructor: freeText(150),
+  provenance: provenanceInput,
   tagIds: Joi.array().items(id).max(20).unique().default([]),
   relatedCourseIds: Joi.array().items(id).max(8).unique().default([]),
-  translations: translations({ description: freeText(2400), objectives: freeText(2400), prerequisites: freeText(2400) }),
+  translations: translations({ description: freeText(2400), objectives: freeText(2400), prerequisites: freeText(2400), provenance: provenanceInput }),
   chapters: Joi.array().items(chapter).max(20).default([]),
 };
 function curriculumIntegrity(input: CourseInput, helpers: Joi.CustomHelpers) {
@@ -46,7 +49,9 @@ function curriculumIntegrity(input: CourseInput, helpers: Joi.CustomHelpers) {
   const lessonIds = lessons.flatMap(item => item.id ? [item.id] : []);
   if (lessons.length > 100 || new Set(lessons.map(item => item.slug)).size !== lessons.length ||
       new Set(chapterIds).size !== chapterIds.length || new Set(lessonIds).size !== lessonIds.length ||
-      lessons.some(item => item.kind === 'text' && item.mediaId !== null)) return helpers.error('any.invalid');
+      lessons.some(item => item.kind === 'quiz' ? !!item.mediaId : !!item.quizId || (item.kind === 'text' && !!item.mediaId))) {
+    return helpers.error('any.invalid');
+  }
   return input;
 }
 

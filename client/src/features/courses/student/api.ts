@@ -1,11 +1,12 @@
 import axios, { isAxiosError } from 'axios';
 import type { EducationRecord } from '../../education/api';
 import type { MediaKind, MediaLink } from '../../media/api';
+import type { PublicProvenance } from '../Provenance';
 
 type Translation = { locale: string; title: string };
 type Description = Translation & { description: string };
-type CourseTranslation = Description & { objectives: string; prerequisites: string };
-export type LessonKind = 'text' | 'video' | 'audio' | 'pdf';
+type CourseTranslation = Description & { objectives: string; prerequisites: string; provenance?: PublicProvenance | null };
+export type LessonKind = 'text' | 'video' | 'audio' | 'pdf' | 'image' | 'quiz';
 
 export interface LessonReference {
   id: string;
@@ -36,6 +37,7 @@ export interface CourseSummary {
 
 export interface PublicCourse extends CourseSummary {
   chapters: CourseChapter[];
+  provenance?: PublicProvenance | null;
 }
 
 export interface PublicMedia {
@@ -65,7 +67,11 @@ interface CourseOptions {
 
 export interface LessonResponse {
   course: PublicCourse;
-  lesson: LessonReference & { translations: (Description & { body: string })[]; mediaId: string | null };
+  lesson: Omit<LessonReference, 'translations'> & {
+    translations: (Description & { body: string; imageAlt?: string; provenance?: PublicProvenance | null })[];
+    mediaId: string | null;
+    quizSlug?: string | null;
+  };
   previous: string | null;
   next: string | null;
   media: PublicMedia | null;

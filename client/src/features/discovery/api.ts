@@ -9,7 +9,8 @@ export type ActivityKind = typeof activityKinds[number];
 export type ResultKind = typeof resultKinds[number];
 export type DailyMode = typeof dailyModes[number];
 export interface DiscoveryText { locale: string; title: string; description: string }
-export interface SearchEntry extends DiscoveryText { kind: ResultKind; id: string; href: string; fileLanguage?: string }
+export interface SearchEntry extends DiscoveryText { kind: ResultKind | 'collection'; id: string; href: string; fileLanguage?: string }
+export type DiscoveryGroup = 'paths' | 'collections';
 export interface ActivityReference { kind: ActivityKind; id: string }
 export interface PathActivity { reference: ActivityReference; activity: SearchEntry | null }
 export interface PathInput {
@@ -30,6 +31,7 @@ export interface SearchFilters {
 
 const service = axios.create({ baseURL: '/api/v1', timeout: 12000 });
 const admin = '/admin/discovery';
+const publicGroups = { paths: '/learning-paths', collections: '/collections' };
 
 export async function searchContent(filters: SearchFilters, signal: AbortSignal) {
   const { data } = await service.get<List<SearchEntry>>('/search', { params: filters, signal });
@@ -41,13 +43,13 @@ export async function searchSuggestions(q: string, language: string | undefined,
   return data.items;
 }
 
-export async function loadPaths(q: string, page: number, language: string | undefined, preferred: string, signal: AbortSignal) {
-  const { data } = await service.get<List<SearchEntry>>('/learning-paths', { params: { q, page, language, preferred }, signal });
+export async function loadPaths(q: string, page: number, language: string | undefined, preferred: string, signal: AbortSignal, group: DiscoveryGroup) {
+  const { data } = await service.get<List<SearchEntry>>(publicGroups[group], { params: { q, page, language, preferred }, signal });
   return data;
 }
 
-export async function pathDetails(slug: string, language: string | undefined, signal: AbortSignal) {
-  const { data } = await service.get<{ item: PublicPath }>('/learning-paths/' + encodeURIComponent(slug), { params: { language }, signal });
+export async function pathDetails(slug: string, language: string | undefined, signal: AbortSignal, group: DiscoveryGroup) {
+  const { data } = await service.get<{ item: PublicPath }>(publicGroups[group] + '/' + encodeURIComponent(slug), { params: { language }, signal });
   return data.item;
 }
 
@@ -71,30 +73,31 @@ export async function publishedTaxonomy(kind: Kind, signal: AbortSignal) {
   }
 }
 
-export async function adminPaths(q: string, status: Status | '', page: number, signal: AbortSignal) {
-  const { data } = await service.get<List<PathSummary>>(admin + '/paths', { params: { q, status: status || undefined, page }, signal });
+export async function adminPaths(q: string, status: Status | '', page: number, signal: AbortSignal, group: DiscoveryGroup) {
+  const { data } = await service.get<List<PathSummary>>(admin + '/' + group, { params: { q, status: status || undefined, page }, signal });
   return data;
 }
 
-export async function adminPath(id: string, signal: AbortSignal) {
-  const { data } = await service.get<{ item: PathRecord }>(admin + '/paths/' + encodeURIComponent(id), { signal });
+export async function adminPath(id: string, signal: AbortSignal, group: DiscoveryGroup) {
+  const { data } = await service.get<{ item: PathRecord }>(admin + '/' + group + '/' + encodeURIComponent(id), { signal });
   return data.item;
 }
 
-export async function savePath(input: PathInput, current?: PathRecord) {
+export async function savePath(input: PathInput, group: DiscoveryGroup, current?: PathRecord) {
+  const url = admin + '/' + group;
   const result = current
-    ? await service.put<{ item: PathRecord }>(admin + '/paths/' + current.id, { ...input, version: current.version })
-    : await service.post<{ item: PathRecord }>(admin + '/paths', input);
+    ? await service.put<{ item: PathRecord }>(url + '/' + current.id, { ...input, version: current.version })
+    : await service.post<{ item: PathRecord }>(url, input);
   return result.data.item;
 }
 
-export async function pathStatus(current: PathRecord, status: Status) {
-  const { data } = await service.patch<{ item: PathRecord }>(admin + '/paths/' + current.id + '/status', { version: current.version, status });
+export async function pathStatus(current: PathRecord, status: Status, group: DiscoveryGroup) {
+  const { data } = await service.patch<{ item: PathRecord }>(admin + '/' + group + '/' + current.id + '/status', { version: current.version, status });
   return data.item;
 }
 
-export async function deletePath(current: PathRecord) {
-  await service.delete(admin + '/paths/' + current.id, { data: { version: current.version, confirm: true } });
+export async function deletePath(current: PathRecord, group: DiscoveryGroup) {
+  await service.delete(admin + '/' + group + '/' + current.id, { data: { version: current.version, confirm: true } });
 }
 
 export async function readDailySettings(signal: AbortSignal) {

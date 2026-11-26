@@ -1,6 +1,6 @@
 import Joi from 'joi';
 import { canonicalMediaLocale } from '../media/contract';
-import { interfaceLocales, sectionKeys } from './contract';
+import { interfaceLocales, sectionKeys, siteThemes } from './contract';
 
 const id = Joi.string().trim().lowercase().uuid({ version: 'uuidv4' });
 const localizedText = (length: number) => Joi.string().trim().max(length).allow('').required();
@@ -14,6 +14,7 @@ const branding = Joi.object({
   name: requiredText(60),
   logoId: id.allow(null).required(),
   faviconId: id.allow(null).required(),
+  defaultTheme: Joi.string().valid(...siteThemes),
   translations: Joi.array().items(Joi.object({
     locale, slogan: localizedText(120), mission: localizedText(700),
   })).length(interfaceLocales.length).unique('locale').required(),

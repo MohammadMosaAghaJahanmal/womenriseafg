@@ -1,6 +1,7 @@
 import { QueryTypes, type Sequelize, type Transaction } from 'sequelize';
 import { normalizeEducationSearch } from '../education/models';
 import { publicEducationEntry } from '../education/store';
+import { standaloneQuiz } from '../quizzes/visibility';
 import type { CourseListOptions, CourseRecord, CourseSummary } from './contract';
 import type { CourseModels, CourseRow } from './models';
 
@@ -14,7 +15,9 @@ const visibleTitle = `EXISTS (SELECT 1 FROM course_translations ct
 export const visibleLesson = `EXISTS (SELECT 1 FROM chapter_translations ch
   WHERE ch.chapter_id = l.chapter_id AND ${publishedLocale('ch.locale')})
   AND EXISTS (SELECT 1 FROM lesson_translations lt WHERE lt.lesson_id = l.id
-    AND ${publishedLocale('lt.locale')} AND (l.kind <> 'text' OR LENGTH(TRIM(lt.body)) > 0))`;
+    AND ${publishedLocale('lt.locale')} AND (l.kind <> 'text' OR LENGTH(TRIM(lt.body)) > 0)
+    AND (l.kind <> 'image' OR LENGTH(TRIM(lt.image_alt)) > 0))
+  AND (l.kind <> 'quiz' OR EXISTS (SELECT 1 FROM quizzes z WHERE z.id = l.quiz_id AND ${standaloneQuiz}))`;
 export const publicCourse = `c.status = 'published' AND ${visibleTitle}
   AND EXISTS (SELECT 1 FROM lessons l WHERE l.course_id = c.id AND ${visibleLesson})`;
 
@@ -76,6 +79,10 @@ export function courseReader(db: Sequelize, models: CourseModels) {
     ]);
     const chapterIds = chapters.map(chapter => chapter.getDataValue('id'));
     const lessonIds = lessons.map(lesson => lesson.getDataValue('id'));
+    const quizIds = publicOnly ? lessons.flatMap(lesson => lesson.getDataValue('quizId') ?? []) : [];
+    const availableQuizzes = new Set(quizIds.length ? (await db.query<{ id: string }>(`
+      SELECT z.id FROM quizzes z WHERE z.id IN (:quizIds) AND ${standaloneQuiz}
+    `, { replacements: { quizIds }, type: QueryTypes.SELECT, transaction })).map(row => row.id) : []);
     const [chapterTranslations, lessonTranslations, lessonResources] = await Promise.all([
       chapterIds.length ? ChapterTranslation.findAll({ where: { chapterId: chapterIds }, order: [['locale', 'ASC']], transaction }) : [],
       lessonIds.length ? LessonTranslation.findAll({ where: { lessonId: lessonIds }, order: [['locale', 'ASC']], transaction }) : [],
@@ -89,9 +96,9 @@ export function courseReader(db: Sequelize, models: CourseModels) {
     const taxonomies = publicOnly ? await publicTaxonomies([row], tagIds, transaction) : undefined;
     const relatedIds = related.map(link => link.getDataValue('relatedId'));
     return {
-      ...basics(row, taxonomies), version: row.version, createdAt: row.createdAt.toISOString(),
-      translations: (translated.get(courseId) ?? []).map(({ locale, title, description, objectives, prerequisites }) =>
-        ({ locale, title, description, objectives, prerequisites })),
+      ...basics(row, taxonomies), version: row.version, createdAt: row.createdAt.toISOString(), provenance: row.provenance,
+      translations: (translated.get(courseId) ?? []).map(({ locale, title, description, objectives, prerequisites, provenance }) =>
+        ({ locale, title, description, objectives, prerequisites, provenance })),
       tagIds: taxonomies ? tagIds.filter(id => taxonomies.has(id)) : tagIds,
       relatedCourseIds: publicOnly && relatedIds.length
         ? await publicRelatedIds(relatedIds, transaction)
@@ -101,13 +108,15 @@ export function courseReader(db: Sequelize, models: CourseModels) {
         return {
           id,
           translations: (titles.get(id) ?? []).map(({ locale, title }) => ({ locale, title })),
-          lessons: (orderedLessons.get(id) ?? []).map(({ id, slug, kind, mediaId }) => ({
-            id, slug, kind, mediaId,
+          lessons: (orderedLessons.get(id) ?? []).map(({ id, slug, kind, mediaId, quizId }) => ({
+            id, slug, kind, mediaId, quizId,
             translations: (content.get(id) ?? [])
-              .filter(entry => !publicOnly || kind !== 'text' || entry.body.trim())
-              .map(({ locale, title, description, body }) => ({ locale, title, description, body })),
+              .filter(entry => !publicOnly ||
+                ((kind !== 'text' || entry.body.trim()) && (kind !== 'image' || entry.imageAlt?.trim())))
+              .map(({ locale, title, description, body, imageAlt, provenance }) => ({ locale, title, description, body, imageAlt, provenance })),
             resources: (files.get(id) ?? []).map(({ mediaId, label }) => ({ mediaId, label })),
-          })).filter(lesson => !publicOnly || lesson.translations.length),
+          })).filter(lesson => !publicOnly || (lesson.translations.length &&
+            (lesson.kind !== 'quiz' || (lesson.quizId && availableQuizzes.has(lesson.quizId))))),
         };
       }).filter(chapter => !publicOnly || (chapter.translations.length && chapter.lessons.length)),
     };

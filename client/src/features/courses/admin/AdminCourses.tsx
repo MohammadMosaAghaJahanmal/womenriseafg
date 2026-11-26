@@ -3,6 +3,7 @@ import { useCallback, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Button, Card, InputField, SelectField, StatePanel } from '../../../components/ui/Primitives';
+import { usePageOrder } from '../../admin/PageOrder';
 import { statuses, type Status } from '../../education/api';
 import { EducationStatus } from '../../education/EducationList';
 import { useEducationData } from '../../education/useEducationData';
@@ -55,6 +56,8 @@ function CourseList() {
   const page = Number.isInteger(requested) && requested >= 1 && requested <= 100000 ? requested : 1;
   const load = useCallback((signal: AbortSignal) => listCourses({ q, status, page, pageSize: 12 }, signal), [q, status, page]);
   const { result, reload } = useEducationData(load);
+  const order = usePageOrder(result.status === 'ready' ? result.data.items : [],
+    (item, locale) => preferredTitle(item.translations, locale)?.title ?? item.slug);
   const denied = result.status === 'error' && ['noAccess', 'sessionExpired'].includes(courseError(result.error));
   const filtered = Boolean(q || status);
   const number = new Intl.NumberFormat(i18n.language);
@@ -99,7 +102,8 @@ function CourseList() {
     </StatePanel>}
     {result.status === 'ready' && (result.data.items.length ? <>
       <p className="course-results-count" role="status">{t('results', { count: result.data.total, amount: number.format(result.data.total) })}</p>
-      <ul className="course-list" aria-label={t('title')}>{result.data.items.map(course => <CourseRow key={course.id} course={course} search={search} />)}</ul>
+      <div className="admin-page-order">{order.field}</div>
+      <ul className="course-list" aria-label={t('title')}>{order.items.map(course => <CourseRow key={course.id} course={course} search={search} />)}</ul>
       {result.data.total > result.data.pageSize && <CoursePager page={result.data.page}
         pages={Math.ceil(result.data.total / result.data.pageSize)} onChange={setPage} />}
     </> : <StatePanel kind="empty" title={t(filtered || result.data.total > 0 ? 'noResults' : 'empty')}

@@ -187,6 +187,7 @@ function RecordEditor({ data, reload }: { data: EditorData; reload: () => void }
       apply(await changeEntryStatus(entry, status, note), 'statusSaved');
     } catch (failure) {
       const message = entryError(failure);
+      if (message === 'missingImageAlt') setTab('translations');
       setError(status === 'published' && message === 'needReview' ? 'needFreshReview' : message);
     } finally {
       setBusy(undefined);
@@ -254,9 +255,12 @@ function RecordEditor({ data, reload }: { data: EditorData; reload: () => void }
     <legend>{t('translations')}</legend>
     <p className="course-note">{t('chooseTranslation')}</p>
     <TranslationFields records={translationChoices} values={draft.translations} onChange={translations => change({ translations })} blank={blankTranslation}
-      titleLabel={t('titleField')} disabled={disabled} render={(translation, direction, patch) => <TextArea label={t('description')}
-        locale={translation.locale} direction={direction} maxLength={1000} value={translation.description}
-        onChange={description => patch({ description })} />} />
+      titleLabel={t('titleField')} disabled={disabled} render={(translation, direction, patch) => <>
+        <TextArea label={t('description')} locale={translation.locale} direction={direction} maxLength={1000}
+          value={translation.description} onChange={description => patch({ description })} />
+        {draft.kind === 'resource' && <TextArea label={t('imageAlt')} locale={translation.locale} direction={direction} maxLength={500}
+          value={translation.imageAlt ?? ''} onChange={imageAlt => patch({ imageAlt })} />}
+      </>} />
   </fieldset>;
 
   return <>

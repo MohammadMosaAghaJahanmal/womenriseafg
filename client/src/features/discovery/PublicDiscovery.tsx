@@ -9,7 +9,7 @@ import { useLearning } from '../engagement/local';
 import { SaveResource } from '../engagement/SaveResource';
 import { QuizPager } from '../quizzes/AdminFields';
 import { loadPaths, pathDetails, resultKinds,
-  searchContent, searchSuggestions, type ResultKind, type SearchEntry } from './api';
+  searchContent, searchSuggestions, type DiscoveryGroup, type ResultKind, type SearchEntry } from './api';
 import { discoveryNamespace as ns } from './strings';
 import { DiscoveryState, EntryLink, EntryList } from './Cards';
 import { TaxonomyFilter } from './TaxonomyFilter';
@@ -55,7 +55,7 @@ function SearchTerms({ query, language, preferred, suggestions, apply }: {
   </div>;
 }
 
-export function DiscoveryCatalog({ paths = false }: { paths?: boolean }) {
+export function DiscoveryCatalog({ group }: { group?: DiscoveryGroup }) {
   const { t } = useTranslation(ns);
   const [parameters, setParameters] = useSearchParams();
   const content = useContentLanguage();
@@ -67,51 +67,52 @@ export function DiscoveryCatalog({ paths = false }: { paths?: boolean }) {
     const value = parameters.get(key);
     return value && uuid.test(value) ? value : undefined;
   }
-  const language = contentLocale(parameters.get('language')) ?? (paths ? content.explicit : undefined);
+  const language = contentLocale(parameters.get('language')) ?? (group ? content.explicit : undefined);
   const subjectId = filter('subjectId'), categoryId = filter('categoryId');
   const levelId = filter('levelId'), gradeId = filter('gradeId');
   const preferred = content.preferred;
   const languageFilterLabel = kind === 'book' ? 'fileLanguage' : kind === 'video' || kind === 'short' || kind === 'ai' ? 'metadataLanguage' : 'language';
   const filters = { subjectId, categoryId, levelId, gradeId, language };
-  const load = useCallback((signal: AbortSignal) => paths ? loadPaths(q, page, language, preferred, signal)
+  const load = useCallback((signal: AbortSignal) => group ? loadPaths(q, page, language, preferred, signal, group)
     : searchContent({ q, page, kind, language, preferred, subjectId, categoryId, levelId, gradeId }, signal),
-  [paths, q, page, kind, language, preferred, subjectId, categoryId, levelId, gradeId]);
+  [group, q, page, kind, language, preferred, subjectId, categoryId, levelId, gradeId]);
   const { result, reload } = useEducationData(load);
   function update(key: string, value: string) {
     const next = new URLSearchParams(parameters);
     if (key !== 'page') next.delete('page');
-    if (paths && key === 'language') next.delete('lang');
+    if (group && key === 'language') next.delete('lang');
     if (value) next.set(key, value);
     else next.delete(key);
     setParameters(next);
   }
   return <div className="learn-page discovery-page">
-    <h1>{t(paths ? 'paths' : 'search')}</h1>
-    <SearchTerms key={q} query={q} language={language} preferred={preferred} suggestions={!paths} apply={value => update('q', value)} />
+    <h1>{t(group ?? 'search')}</h1>
+    <SearchTerms key={q} query={q} language={language} preferred={preferred} suggestions={!group} apply={value => update('q', value)} />
     <div className="discovery-filters">
-      {!paths && <SelectField label={t('kind')} value={kind ?? ''} onChange={event => update('kind', event.target.value)}>
+      {!group && <SelectField label={t('kind')} value={kind ?? ''} onChange={event => update('kind', event.target.value)}>
         <option value="">{t('all')}</option>
         {resultKinds.map(value => <option key={value} value={value}>{t(value)}</option>)}
       </SelectField>}
-      {taxonomies.filter(([key]) => !paths || key === 'language').map(([key, family, label]) => <TaxonomyFilter key={key} kind={family}
+      {taxonomies.filter(([key]) => !group || key === 'language').map(([key, family, label]) => <TaxonomyFilter key={key} kind={family}
         label={t(key === 'language' ? languageFilterLabel : label)}
         value={filters[key] ?? ''} change={value => update(key, value)} />)}
     </div>
     {parameters.size > 0 && <Button className="discovery-action" variant="ghost" onClick={() => setParameters({})}>{t('clear')}</Button>}
     {result.status !== 'ready' ? <DiscoveryState failed={result.status === 'error'} retry={reload} /> : <>
-      {result.data.items.length ? <EntryList items={result.data.items} /> : <StatePanel kind="empty" title={t(paths && !q && !language ? 'pathEmpty' : 'empty')} />}
+      {result.data.items.length ? <EntryList items={result.data.items} /> : <StatePanel kind="empty"
+        title={t(group && !q && !language ? (group === 'paths' ? 'pathEmpty' : 'collectionEmpty') : 'empty')} />}
       {result.data.total > result.data.pageSize && <QuizPager page={page}
         pages={Math.ceil(result.data.total / result.data.pageSize)} change={value => update('page', String(value))} />}
     </>}
   </div>;
 }
 
-export function LearningPath() {
+export function LearningPath({ group = 'paths' }: { group?: DiscoveryGroup }) {
   const { slug = '' } = useParams();
   const { t, i18n } = useTranslation(ns);
   const language = useContentLanguage();
   const preferred = language.preferred;
-  const load = useCallback((signal: AbortSignal) => pathDetails(slug, preferred, signal), [slug, preferred]);
+  const load = useCallback((signal: AbortSignal) => pathDetails(slug, preferred, signal, group), [slug, preferred, group]);
   const { result, reload } = useEducationData(load);
   const { enabled, completedCourses, completedLessons, completedItems } = useLearning();
   function completed(activity: SearchEntry) {
@@ -135,16 +136,16 @@ export function LearningPath() {
         {locales.length === 1 ? <AvailableLanguages locales={locales} label={t('language')} />
           : <ContentLanguageSelect label={t('language')} locales={locales} selected={copy.locale} onSelect={language.setLanguage} />}
       </header>
-      <SaveResource resource={{ kind: 'path', id: path.id, slug: path.slug, title: copy.title, locale: copy.locale }} />
+      {group === 'paths' && <SaveResource resource={{ kind: 'path', id: path.id, slug: path.slug, title: copy.title, locale: copy.locale }} />}
       <section className="learn-panel discovery-page" aria-label={t('activityList')}>
         <h2>{t('activityList')}</h2>
         {enabled && total > 0 && <><ProgressIndicator label={count} value={100 * done / total} /><p>{count}</p></>}
         {total ? <ol className="learning-resource-list discovery-ordered">{path.activities.map(activity =>
           <li key={activity.kind + ':' + activity.id}><EntryLink entry={activity} />
             {enabled && completed(activity) && <Badge>{t('completed')}</Badge>}</li>)}</ol>
-          : <StatePanel kind="empty" title={t('pathEmpty')} />}
+          : <StatePanel kind="empty" title={t(group === 'paths' ? 'pathEmpty' : 'collectionEmpty')} />}
       </section>
     </>;
   }
-  return <div className="learn-page discovery-page"><BackLink to="/learning-paths">{t('paths')}</BackLink>{content}</div>;
+  return <div className="learn-page discovery-page"><BackLink to={group === 'paths' ? '/learning-paths' : '/collections'}>{t(group)}</BackLink>{content}</div>;
 }

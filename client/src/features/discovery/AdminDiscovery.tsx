@@ -3,6 +3,7 @@ import { useCallback, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button, InputField, SelectField, StatePanel } from '../../components/ui/Primitives';
+import { usePageOrder } from '../admin/PageOrder';
 import { readIdentity } from '../auth/api';
 import { contentDirection, TextArea } from '../courses/admin/EditorFields';
 import { BackLink, chooseTranslation, learnerLanguageName, localizedNumber } from '../courses/student/components';
@@ -11,26 +12,31 @@ import { useEducationData } from '../education/useEducationData';
 import { ConfirmQuizAction, QuizPager, QuizStatus, useQuizUnsaved } from '../quizzes/AdminFields';
 import { activityKinds, adminPath, adminPaths, dailyModes, deletePath, editError, pathStatus, publishedTaxonomy,
   readDailySettings, saveDailySettings, savePath, searchContent, type ActivityKind, type DailySettings,
-  type DiscoveryText, type PathActivity, type PathRecord } from './api';
+  type DiscoveryGroup, type DiscoveryText, type PathActivity, type PathRecord } from './api';
 import { DiscoveryState } from './Cards';
 import { TaxonomyFilter } from './TaxonomyFilter';
 import { discoveryNamespace as ns } from './strings';
 
 export const pathsAdminPath = '/admin/discovery/paths';
+export const collectionsAdminPath = '/admin/discovery/collections';
+const groupPaths = { paths: pathsAdminPath, collections: collectionsAdminPath };
 const dailyAdminPath = '/admin/discovery/daily-learning';
 const reviewPermission = 'discovery:publish';
 const managePermission = 'discovery:manage';
 
-function PathsAdminList() {
+function PathsAdminList({ group }: { group: DiscoveryGroup }) {
   const { t, i18n } = useTranslation([ns, 'quiz']);
   const [{ q, page, status }, setQuery] = useState<{ q: string; page: number; status: Status | '' }>({ q: '', page: 1, status: '' });
-  const load = useCallback((signal: AbortSignal) => adminPaths(q, status, page, signal), [q, page, status]);
+  const load = useCallback((signal: AbortSignal) => adminPaths(q, status, page, signal, group), [q, page, status, group]);
   const { result, reload } = useEducationData(load);
+  const order = usePageOrder(result.status === 'ready' ? result.data.items : [],
+    (item, locale) => chooseTranslation(item.translations, locale).title);
+  const base = groupPaths[group];
   return <section className="discovery-admin">
-    <h1>{t('paths')}</h1>
+    <h1>{t(group)}</h1>
     <div className="learning-actions">
-      <Button asChild><Link to={pathsAdminPath + '/new'}><Plus aria-hidden="true" size={17} />{t('addPath')}</Link></Button>
-      <Button asChild variant="secondary"><Link to={dailyAdminPath}>{t('daily')}</Link></Button>
+      <Button asChild><Link to={base + '/new'}><Plus aria-hidden="true" size={17} />{t(group === 'paths' ? 'addPath' : 'addCollection')}</Link></Button>
+      {group === 'paths' && <Button asChild variant="secondary"><Link to={dailyAdminPath}>{t('daily')}</Link></Button>}
     </div>
     <form className="course-search" onSubmit={event => {
       event.preventDefault();
@@ -45,23 +51,24 @@ function PathsAdminList() {
       <Button type="submit" variant="secondary">{t('find')}</Button>
     </form>
     {result.status !== 'ready' ? <DiscoveryState failed={result.status === 'error'} retry={reload} /> : <>
-      {result.data.items.length ? <ul className="learning-resource-list">{result.data.items.map(path => {
+      {result.data.items.length > 0 && <div className="admin-page-order">{order.field}</div>}
+      {result.data.items.length ? <ul className="learning-resource-list">{order.items.map(path => {
         const label = chooseTranslation(path.translations, i18n.language);
-        return <li key={path.id}><Link to={pathsAdminPath + '/' + path.id}><span><bdi lang={label.locale}>{label.title}</bdi>
+        return <li key={path.id}><Link to={base + '/' + path.id}><span><bdi lang={label.locale}>{label.title}</bdi>
           <small>{localizedNumber(path.activityCount, i18n.language)} · {t('activityList')}</small></span></Link>
           <QuizStatus status={path.status} /></li>;
-      })}</ul> : <StatePanel kind="empty" title={t('pathEmpty')} />}
+      })}</ul> : <StatePanel kind="empty" title={t(group === 'paths' ? 'pathEmpty' : 'collectionEmpty')} />}
       {result.data.total > result.data.pageSize && <QuizPager page={page} pages={Math.ceil(result.data.total / result.data.pageSize)}
         change={next => setQuery({ q, status, page: next })} />}
     </>}
   </section>;
 }
 
-function ActivityPicker({ items, change }: { items: PathActivity[]; change: (next: PathActivity[]) => void }) {
+function ActivityPicker({ items, change, courses = false }: { items: PathActivity[]; change: (next: PathActivity[]) => void; courses?: boolean }) {
   const { t, i18n } = useTranslation(ns);
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState<{ q: string; kind: ActivityKind; page: number }>();
-  const [kind, setKind] = useState<ActivityKind>('lesson');
+  const [kind, setKind] = useState<ActivityKind>(courses ? 'course' : 'lesson');
   const load = useCallback((signal: AbortSignal) => search ? searchContent(search, signal) : Promise.resolve(null), [search]);
   const { result, reload } = useEducationData(load);
   function move(index: number, difference: number) {
@@ -88,9 +95,9 @@ function ActivityPicker({ items, change }: { items: PathActivity[]; change: (nex
     })}</ol>}
     {items.length < 24 && <>
       <div className="discovery-filters">
-        <SelectField label={t('kind')} value={kind} onChange={event => setKind(event.target.value as ActivityKind)}>
+        {!courses && <SelectField label={t('kind')} value={kind} onChange={event => setKind(event.target.value as ActivityKind)}>
           {activityKinds.map(value => <option value={value} key={value}>{t(value)}</option>)}
-        </SelectField>
+        </SelectField>}
         <InputField label={t('chooseActivity')} type="search" value={query} maxLength={120}
           onKeyDown={event => {
             if (event.key === 'Enter') { event.preventDefault(); setSearch({ q: query.trim(), kind, page: 1 }); }
@@ -114,9 +121,12 @@ function ActivityPicker({ items, change }: { items: PathActivity[]; change: (nex
   </section>;
 }
 
-function PathEditor({ record, languages, publish }: { record?: PathRecord; languages: string[]; publish: boolean }) {
+function PathEditor({ record, languages, publish, group }: {
+  record?: PathRecord; languages: string[]; publish: boolean; group: DiscoveryGroup;
+}) {
   const { t, i18n } = useTranslation([ns, 'quiz']);
   const navigate = useNavigate();
+  const base = groupPaths[group];
   const [current, setCurrent] = useState(record);
   const [slug, setSlug] = useState(record?.slug ?? '');
   const [subjectId, setSubject] = useState(record?.subjectId ?? '');
@@ -157,18 +167,19 @@ function PathEditor({ record, languages, publish }: { record?: PathRecord; langu
     if (!editable) return;
     void update(async () => {
       const item = await savePath({ slug, subjectId: subjectId || null, levelId: levelId || null,
-        translations, activities: activities.map(value => value.reference) }, current);
+        translations, activities: activities.map(value => value.reference) }, group, current);
       setCurrent(item);
       setSlug(item.slug);
       setTranslations(item.translations);
       setActivities(item.activities);
       setDirty(false);
-      if (!current) navigate(pathsAdminPath + '/' + item.id);
+      if (!current) navigate(base + '/' + item.id);
     });
   }
   return <section className="discovery-admin">
-    <BackLink to={pathsAdminPath}>{t('paths')}</BackLink>
-    <h1>{current ? <bdi>{chooseTranslation(current.translations, i18n.language).title}</bdi> : t('addPath')}</h1>
+    <BackLink to={base}>{t(group)}</BackLink>
+    <h1>{current ? <bdi>{chooseTranslation(current.translations, i18n.language).title}</bdi>
+      : t(group === 'paths' ? 'addPath' : 'addCollection')}</h1>
     {message && <p role={error ? 'alert' : 'status'}>{t(message)}</p>}
     <form className="discovery-editor" onSubmit={save}>
       <InputField label={t('code')} value={slug} onChange={event => { setSlug(event.target.value); setDirty(true); }}
@@ -200,7 +211,7 @@ function PathEditor({ record, languages, publish }: { record?: PathRecord; langu
         }}>{t('addTranslation')}</Button>
       </div>}
       {editable ? <fieldset className="discovery-translation" disabled={pending}>
-        <ActivityPicker items={activities} change={next => { setActivities(next); setDirty(true); }} />
+        <ActivityPicker courses={group === 'collections'} items={activities} change={next => { setActivities(next); setDirty(true); }} />
       </fieldset> : <ol className="learning-resource-list discovery-ordered">{activities.map(item => <li key={item.reference.kind + ':' + item.reference.id}>
         <bdi lang={item.activity?.locale}>{item.activity?.title ?? t('unavailable')}</bdi></li>)}</ol>}
       {editable && <Button type="submit" className="discovery-action" disabled={pending}>{t(pending ? 'saving' : 'save')}</Button>}
@@ -211,11 +222,13 @@ function PathEditor({ record, languages, publish }: { record?: PathRecord; langu
         .filter(status => publish || !['approved', 'published', 'archived'].includes(status))
         .map(status => <ConfirmQuizAction key={status} label={t('quiz:' + status)} disabled={dirty || pending}
           title={t('confirmStatus', { status: t('quiz:' + status) })} onConfirm={() => void update(async () => {
-            setCurrent(await pathStatus(current, status));
+            setCurrent(await pathStatus(current, status, group));
           })} />)}
         {canDelete(current.status) && <ConfirmQuizAction label={t('delete')} title={t('confirmDelete')} disabled={pending}
-          onConfirm={() => void update(async () => { await deletePath(current); navigate(pathsAdminPath); })} />}
-        {current.status === 'published' && <Button asChild variant="secondary"><Link to={'/learning-paths/' + current.slug}>{t('path')}</Link></Button>}
+          onConfirm={() => void update(async () => { await deletePath(current, group); navigate(base); })} />}
+        {current.status === 'published' && <Button asChild variant="secondary">
+          <Link to={(group === 'paths' ? '/learning-paths/' : '/collections/') + current.slug}>{t(group === 'paths' ? 'path' : 'collection')}</Link>
+        </Button>}
       </div>
     </section>}
   </section>;
@@ -263,11 +276,13 @@ function DailyEditor({ initial, previews, publish }: { initial: DailySettings; p
 
 export function AdminDiscovery({ route }: { route: string }) {
   const { t } = useTranslation(ns);
-  const list = route === pathsAdminPath;
+  const group = route === collectionsAdminPath || route.startsWith(collectionsAdminPath + '/') ? 'collections' : 'paths';
+  const base = groupPaths[group];
+  const list = route === base;
   const daily = route === dailyAdminPath;
-  const id = route.slice(pathsAdminPath.length + 1);
+  const id = route.slice(base.length + 1);
   const fresh = id === 'new';
-  const valid = list || daily || (route.startsWith(pathsAdminPath + '/') && (fresh || /^[a-f0-9-]{36}$/i.test(id)));
+  const valid = list || daily || (route.startsWith(base + '/') && (fresh || /^[a-f0-9-]{36}$/i.test(id)));
   const load = useCallback(async (signal: AbortSignal) => {
     const user = await readIdentity(signal);
     const manage = user?.permissions.includes(managePermission) ?? false;
@@ -276,18 +291,20 @@ export function AdminDiscovery({ route }: { route: string }) {
     if (!manage || !valid || list) return permissions;
     if (daily) return { ...permissions, daily: await readDailySettings(signal) };
     const [record, translations] = await Promise.all([
-      fresh ? Promise.resolve(undefined) : adminPath(id, signal), publishedTaxonomy('languages', signal),
+      fresh ? Promise.resolve(undefined) : adminPath(id, signal, group), publishedTaxonomy('languages', signal),
     ]);
     return { ...permissions, record, translations: translations.map((value: EducationRecord) => value.locale).filter((value): value is string => !!value) };
-  }, [daily, fresh, id, list, valid]);
+  }, [daily, fresh, group, id, list, valid]);
   const { result, reload } = useEducationData(load);
   if (result.status !== 'ready') return <DiscoveryState failed={result.status === 'error'} retry={reload} />;
   const data = result.data;
   if (!valid) return <StatePanel kind="error" title={t('unavailable')} />;
   if (!data.manage) return <StatePanel kind="error" title={t('permission')} />;
-  if (list) return <PathsAdminList />;
+  if (list) return <PathsAdminList group={group} />;
   if ('daily' in data && data.daily) return <DailyEditor initial={data.daily.settings} publish={data.publish}
     previews={data.daily.settings.activities.map((reference, index) => ({ reference, activity: data.daily.previews[index] ?? null }))} />;
-  if ('translations' in data && data.translations?.length) return <PathEditor record={data.record} languages={data.translations} publish={data.publish} />;
+  if ('translations' in data && data.translations?.length) {
+    return <PathEditor record={data.record} languages={data.translations} publish={data.publish} group={group} />;
+  }
   return <StatePanel kind="empty" title={t('reference')} />;
 }

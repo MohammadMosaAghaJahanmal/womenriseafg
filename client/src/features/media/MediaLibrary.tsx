@@ -1,6 +1,7 @@
 import { Files, FileText, HardDrive, Link2Off, Plus, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePageOrder } from '../admin/PageOrder';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Button, Card, DialogClose, InputField, Pagination, PanelDialog, SelectField, StatePanel } from '../../components/ui/Primitives';
 import { useEducationData } from '../education/useEducationData';
@@ -140,6 +141,7 @@ export function MediaLibrary() {
     listMedia({ q: q || undefined, status, kind, page, pageSize: 10, orphans: orphans || undefined }, signal),
   [q, status, kind, page, orphans]);
   const { result, reload } = useEducationData(load);
+  const order = usePageOrder(result.status === 'ready' ? result.data.items : [], item => item.title);
   const pages = result.status === 'ready' ? Math.max(1, Math.ceil(result.data.total / result.data.pageSize)) : 1;
   const number = new Intl.NumberFormat(i18n.language);
   const filtered = q || status || kind || orphans;
@@ -203,7 +205,8 @@ export function MediaLibrary() {
         </StatePanel>}
         {result.status === 'ready' && (result.data.items.length ? <>
           <p className="media-note" role="status">{t('results', { count: result.data.total, countText: number.format(result.data.total) })}</p>
-          <MediaRows items={result.data.items} />
+          <div className="admin-page-order">{order.field}</div>
+          <MediaRows items={order.items} />
           <Pagination page={page} pages={pages} pageLabel={t('page', { page: number.format(page), pages: number.format(pages) })}
             label={t('pagination')} previous={t('previous')} next={t('next')} onChange={toPage} />
         </> : <StatePanel kind="empty" title={t('empty')} description={t(orphans ? 'orphanEmpty' : 'emptyHint')} />)}

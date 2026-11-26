@@ -2,7 +2,7 @@ import { QueryTypes, type Sequelize, type Transaction } from 'sequelize';
 import { publicCourse } from '../courses/reader';
 import { createDiscoveryStore } from '../discovery/store';
 import { normalizeEducationSearch } from '../education/models';
-import { HomepageError, type HomepageBranding, type HomepageItem, type HomepageSettings, type HomeQuery, type SectionKey } from './contract';
+import { HomepageError, siteThemes, type HomepageBranding, type HomepageItem, type HomepageSettings, type HomeQuery, type SectionKey } from './contract';
 import { homepageReader, mergeRecentlyAdded, type Candidate, type HomepageKind } from './reader';
 
 interface ImageQuery { q: string; page: number; pageSize: number }
@@ -24,7 +24,12 @@ export function createHomepageStore(db: Sequelize) {
       SELECT CAST(config AS CHAR CHARACTER SET utf8mb4) AS config, version FROM homepage_settings
       WHERE id = 1${lock ? ' FOR UPDATE' : ''}`, { type: QueryTypes.SELECT, transaction });
     if (!row) throw new HomepageError('HOME_UNAVAILABLE');
-    return { ...(JSON.parse(row.config) as Omit<HomepageSettings, 'version'>), version: row.version };
+    const config = JSON.parse(row.config) as Omit<HomepageSettings, 'version'>;
+    const defaultTheme = config.branding.defaultTheme;
+    return {
+      ...config, version: row.version,
+      branding: { ...config.branding, defaultTheme: defaultTheme && siteThemes.includes(defaultTheme) ? defaultTheme : 'system' },
+    };
   }
 
   async function validateBrandAssets(branding: HomepageBranding, transaction: Transaction) {
@@ -135,9 +140,10 @@ export function createHomepageStore(db: Sequelize) {
           throw new HomepageError('INVALID_REFERENCE');
         }
         const { version, ...configuration } = input;
+        const next = { ...configuration, branding: { ...branding, defaultTheme: branding.defaultTheme ?? current.branding.defaultTheme } };
         await db.query(`UPDATE homepage_settings SET config = $config, version = version + 1, updated_at = NOW(3)
-          WHERE id = 1`, { bind: { config: JSON.stringify(configuration) }, transaction });
-        return { settings: { ...configuration, version: version + 1 }, selected };
+          WHERE id = 1`, { bind: { config: JSON.stringify(next) }, transaction });
+        return { settings: { ...next, version: version + 1 }, selected };
       });
     },
 

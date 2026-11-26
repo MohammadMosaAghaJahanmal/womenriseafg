@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { Language } from '../../../i18n';
+import type { Theme } from '../../../preferences';
 import { authError, authStatus } from '../../auth/api';
 import { searchContent } from '../../discovery/api';
 import type { Page } from '../../quizzes/api';
@@ -17,6 +18,7 @@ export type Branding = {
   name: string;
   logoId: string | null;
   faviconId: string | null;
+  defaultTheme?: Theme;
   translations: BrandingTranslation[];
 };
 export type AnnouncementTranslation = { locale: Language; title: string; body: string };

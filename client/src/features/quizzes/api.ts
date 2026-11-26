@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { authError, authStatus } from '../auth/api';
 import type { EducationRecord, Status } from '../education/api';
+import type { ContentProvenance, PublicProvenance } from '../courses/Provenance';
 
 export const quizAdminPath = '/admin/quizzes';
 export const questionBankPath = quizAdminPath + '/questions';
@@ -12,14 +13,18 @@ export const questionLabels = {
   'true-false': 'boolean',
   'short-answer': 'short',
 } as const;
-export type QuizTranslation = { locale: string; title: string; description: string };
-export type PublicQuestionTranslation = { locale: string; prompt: string; options: string[] };
-export type QuestionTranslation = PublicQuestionTranslation & { acceptedAnswers: string[]; explanation: string };
+type Description = { locale: string; title: string; description: string };
+export type QuizTranslation = Description & { provenance?: ContentProvenance | null };
+export type PublicQuestionTranslation = { locale: string; prompt: string; options: string[]; provenance?: PublicProvenance | null };
+export type QuestionTranslation = Omit<PublicQuestionTranslation, 'provenance'> & {
+  acceptedAnswers: string[]; explanation: string; provenance?: ContentProvenance | null;
+};
 
 export interface QuestionInput {
   kind: QuestionKind;
   correctOptions: number[];
   translations: QuestionTranslation[];
+  provenance?: ContentProvenance | null;
 }
 
 export interface BankQuestion extends QuestionInput {
@@ -32,6 +37,7 @@ export interface PublicQuestion {
   id: string;
   kind: QuestionKind;
   translations: PublicQuestionTranslation[];
+  provenance?: PublicProvenance | null;
 }
 
 export interface QuizInput {
@@ -40,6 +46,7 @@ export interface QuizInput {
   passingScore: number;
   questionIds: string[];
   translations: QuizTranslation[];
+  provenance?: ContentProvenance | null;
 }
 
 export interface QuizSummary {
@@ -58,9 +65,11 @@ export interface AdminQuiz extends QuizInput, QuizSummary {
   questions?: { id: string; kind: QuestionKind; translations: { locale: string; prompt: string }[] }[];
 }
 
-export interface PublicQuiz extends QuizSummary {
+export interface PublicQuiz extends Omit<QuizSummary, 'translations'> {
   version: number;
   questions: PublicQuestion[];
+  translations: (Description & { provenance?: PublicProvenance | null })[];
+  provenance?: PublicProvenance | null;
 }
 
 export interface Answer {
@@ -88,7 +97,7 @@ export function quizPath(slug: string, language?: string) {
   return '/quizzes/' + encodeURIComponent(slug) + suffix;
 }
 
-export async function listPublishedQuizzes(options: ListOptions & { language?: string; courseId?: string }, signal: AbortSignal) {
+export async function listPublishedQuizzes(options: ListOptions & { language?: string; courseId?: string; standalone?: boolean }, signal: AbortSignal) {
   const result = await service.get<Page<QuizSummary>>('/quizzes', { params: options, signal });
   return result.data;
 }
@@ -167,7 +176,9 @@ export function quizError(error: unknown, fallback: string) {
     case 'INVALID_INPUT': return 'invalid';
     case 'INVALID_REFERENCE': return 'unavailableReference';
     case 'INCOMPLETE_CONTENT': return 'incompleteContent';
+    case 'INCOMPLETE_PROVENANCE': return 'incompleteProvenance';
     case 'QUESTION_IN_USE': return 'questionInUse';
+    case 'QUIZ_IN_USE': return 'quizInUse';
     case 'INVALID_TRANSITION': return 'invalidTransition';
     case 'STALE_VERSION': return 'conflict';
     case 'CONFLICT': return 'duplicate';

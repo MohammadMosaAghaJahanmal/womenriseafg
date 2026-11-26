@@ -31,6 +31,7 @@ const failures = {
   INVALID_SHORT: [422, 'Select a vertical 9:16 video within the configured duration limit.'],
   REVIEW_REQUIRED: [422, 'A human review note and approval are required.'],
   INCOMPLETE_CONTENT: [422, 'Complete the required language, file and editorial information before continuing.'],
+  MISSING_IMAGE_ALT: [422, 'Describe the illustration in each available translation before approval or publication.'],
   DRAFT_MEDIA_FORBIDDEN: [403, 'The media management permission is required to use a draft file.'],
 } as const;
 

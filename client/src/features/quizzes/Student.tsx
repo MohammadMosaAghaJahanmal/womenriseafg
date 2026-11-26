@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Badge, Button, Card, InputField, Pagination, ProgressIndicator, StatePanel } from '../../components/ui/Primitives';
 import { authError, authStatus } from '../auth/api';
+import { ProvenanceNote } from '../courses/Provenance';
 import { AvailableLanguages, BackLink, chooseTranslation, contentLocale, ContentLanguageNotice, ContentLanguageSelect, useContentLanguage } from '../courses/student/components';
 import { useEducationData } from '../education/useEducationData';
 import { TaxonomyFilter } from '../discovery/TaxonomyFilter';
@@ -99,6 +100,7 @@ function QuizQuestion({ question, number, locale, answer, disabled, change }: {
   const multiple = question.kind === 'multiple-choice';
   return <fieldset className="quiz-question" id={'quiz-question-' + question.id} disabled={disabled} tabIndex={-1}>
     <legend><span>{t('questionNumber', { number })}</span><bdi lang={copy.locale}>{copy.prompt}</bdi></legend>
+    <ProvenanceNote value={copy.provenance ?? question.provenance} />
     {question.kind === 'short-answer' ? <InputField label={t('reply')} value={answer.text} dir="auto" lang={copy.locale}
       maxLength={200} onChange={event => change({ ...answer, text: event.target.value })} />
       : <>
@@ -113,16 +115,17 @@ function QuizQuestion({ question, number, locale, answer, disabled, change }: {
   </fieldset>;
 }
 
-function QuizResults({ quiz, result, submitted, retake }: {
-  quiz: PublicQuiz; result: QuizResult; submitted: Answer[]; retake: () => void;
+function QuizResults({ quiz, result, submitted, retake, embedded }: {
+  quiz: PublicQuiz; result: QuizResult; submitted: Answer[]; retake: () => void; embedded: boolean;
 }) {
   const { t, i18n } = useTranslation(ns);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
   const number = new Intl.NumberFormat(i18n.language);
+  const Heading = embedded ? 'h3' : 'h2';
   return <section className="quiz-results" aria-labelledby="quiz-result-title">
     <Card className="quiz-score">
-      <div><h2 id="quiz-result-title" ref={heading} tabIndex={-1}>{t('quizResults')}</h2>
+      <div><Heading id="quiz-result-title" ref={heading} tabIndex={-1}>{t('quizResults')}</Heading>
         <p>{t(result.passed ? 'passed' : 'notPassed')}</p>
         <p>{t('resultCount', { correct: number.format(result.correctCount), total: number.format(result.totalQuestions) })}</p>
       </div>
@@ -154,7 +157,7 @@ function QuizResults({ quiz, result, submitted, retake }: {
   </section>;
 }
 
-function QuizAttempt({ quiz, reload }: { quiz: PublicQuiz; reload: () => void }) {
+function QuizAttempt({ quiz, reload, embedded = false }: { quiz: PublicQuiz; reload: () => void; embedded?: boolean }) {
   const { t, i18n } = useTranslation(ns);
   const language = useContentLanguage();
   const [attemptLocale, setAttemptLocale] = useState<string>();
@@ -214,10 +217,12 @@ function QuizAttempt({ quiz, reload }: { quiz: PublicQuiz; reload: () => void })
     setFocusAttempt(value => value + 1);
   }
 
+  const Title = embedded ? 'h2' : 'h1';
+  const AttemptHeading = embedded ? 'h3' : 'h2';
   return <>
     <header className="quiz-header">
       <div>
-        <h1 lang={copy.locale} dir="auto">{copy.title}</h1>
+        <Title lang={copy.locale} dir="auto">{copy.title}</Title>
         {!attemptLocale && <ContentLanguageNotice preferred={language.preferred} actual={copy.locale} />}
         {copy.description && <p lang={copy.locale} dir="auto">{copy.description}</p>}
         <div className="quiz-meta">
@@ -228,11 +233,12 @@ function QuizAttempt({ quiz, reload }: { quiz: PublicQuiz; reload: () => void })
       {locales.length === 1 || attemptLocale ? <AvailableLanguages label={t('contentLanguages')} locales={locales} />
         : <ContentLanguageSelect label={t('contentLanguage')} locales={locales} selected={copy.locale} onSelect={language.setLanguage} />}
     </header>
+    <ProvenanceNote value={copy.provenance ?? quiz.provenance} />
     <SaveResource resource={{ kind: 'quiz', id: quiz.id, slug: quiz.slug, title: copy.title, locale: copy.locale }} />
-    {completed ? <QuizResults quiz={quiz} result={completed.result} submitted={completed.submitted} retake={startAgain} />
+    {completed ? <QuizResults quiz={quiz} result={completed.result} submitted={completed.submitted} retake={startAgain} embedded={embedded} />
       : !attemptLocale ? <Button onClick={startAgain}><Play size={18} aria-hidden="true" />{t('start')}</Button>
         : <form className="quiz-attempt" onSubmit={submit}>
-          <h2 tabIndex={-1} ref={questionHeading}>{t('attempt')}</h2>
+          <AttemptHeading tabIndex={-1} ref={questionHeading}>{t('attempt')}</AttemptHeading>
           <div className="quiz-attempt-progress"><ProgressIndicator value={100 * answered / Math.max(1, quiz.questions.length)} label={t('progress', { answered: number.format(answered), total: number.format(quiz.questions.length) })} />
             <span aria-live="polite">{t('progress', { answered: number.format(answered), total: number.format(quiz.questions.length) })}</span>
           </div>
@@ -246,8 +252,18 @@ function QuizAttempt({ quiz, reload }: { quiz: PublicQuiz; reload: () => void })
             <CheckCircle2 size={18} aria-hidden="true" />{t(pending ? 'submitting' : 'submit')}
           </Button>
         </form>}
-    <Recommendations kind="quiz" id={quiz.id} language={copy.locale} />
+    {!embedded && <Recommendations kind="quiz" id={quiz.id} language={copy.locale} />}
   </>;
+}
+
+export function LessonQuiz({ slug }: { slug: string }) {
+  const load = useCallback((signal: AbortSignal) => getPublishedQuiz(slug, signal), [slug]);
+  const { result, reload } = useEducationData(load);
+  return <div className="quiz-page learn-panel">
+    {result.status === 'ready'
+      ? <QuizAttempt key={result.data.slug + ':' + result.data.version} quiz={result.data} reload={reload} embedded />
+      : <QuizState error={result.status === 'error' ? result.error : undefined} retry={reload} />}
+  </div>;
 }
 
 export function QuizDetail() {

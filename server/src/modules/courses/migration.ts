@@ -143,7 +143,7 @@ const constraints = [
   'courses_slug', 'course_status_valid', 'course_duration_valid', 'course_subject_fk', 'course_level_fk',
   'course_grade_fk', 'course_thumbnail_fk', 'course_creator_fk', 'course_translation_fk', 'course_translation_locale_fk',
   'chapters_course_identity', 'chapter_course_fk', 'chapter_translation_fk', 'chapter_translation_locale_fk',
-  'lessons_course_slug', 'lesson_kind_valid', 'lesson_chapter_fk', 'lesson_media_fk', 'lesson_translation_fk',
+  'lessons_course_slug', 'lesson_chapter_fk', 'lesson_media_fk', 'lesson_translation_fk',
   'lesson_translation_locale_fk', 'lesson_resource_lesson_fk', 'lesson_resource_media_fk', 'course_tag_course_fk',
   'course_tag_entry_fk', 'course_related_distinct', 'course_related_course_fk', 'course_related_target_fk',
 ];
@@ -166,7 +166,8 @@ async function verifySchema(db: Sequelize, transaction: Transaction) {
   const ruleNames = new Set(rules.map(row => row.name));
   if (fields.some(row => row.engine !== 'InnoDB' || row.collation !== 'utf8mb4_unicode_ci') ||
       Object.entries(columns).some(([table, names]) => names.some(name => !fieldNames.has(table + '.' + name))) ||
-      constraints.some(name => !ruleNames.has(name))) {
+      constraints.some(name => !ruleNames.has(name)) ||
+      (!ruleNames.has('lesson_kind_valid') && !ruleNames.has('lesson_extended_kind_valid'))) {
     throw new CourseMigrationError('The course schema is incompatible. Review the database before retrying.');
   }
 }

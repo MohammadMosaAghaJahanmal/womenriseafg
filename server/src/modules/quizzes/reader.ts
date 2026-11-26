@@ -1,30 +1,19 @@
 import { QueryTypes, type Sequelize, type Transaction } from 'sequelize';
-import { publicCourse, publishedLocale } from '../courses/reader';
+import { publicCourse } from '../courses/reader';
 import { normalizeEducationSearch } from '../education/models';
 import type { QuestionListOptions, QuestionRecord, QuizListOptions, QuizRecord, QuizTranslation } from './contract';
 import type { QuestionRow, QuizModels, QuizRow } from './models';
+import { publishedQuizLocale as quizLocale, readyQuiz } from './visibility';
 
 type QuizProjection = QuizRow & { courseSlug: string | null };
 type BankProjection = QuestionRow & { referenced: number | boolean };
 type TranslationRow = QuizTranslation & { quizId: string };
 type Bindings = Record<string, string | number | string[] | undefined>;
 
-// A visible locale describes the quiz and all its questions so that what learners
-// see is exactly the language the grader uses, including for short answers.
-export const quizLocale = (field: string) => `${publishedLocale(field)}
-  AND NOT EXISTS (
-    SELECT 1 FROM quiz_question_links complete
-    WHERE complete.quiz_id = z.id AND NOT EXISTS (
-      SELECT 1 FROM quiz_question_translations prompt
-      WHERE prompt.question_id = complete.question_id AND prompt.locale = ${field}
-    )
-  )`;
+export { publishedQuizLocale as quizLocale } from './visibility';
 
 const linkedCourse = `EXISTS (SELECT 1 FROM courses c WHERE c.id = z.course_id AND ${publicCourse})`;
-export const publicQuiz = `z.status = 'published'
-  AND (z.course_id IS NULL OR ${linkedCourse})
-  AND EXISTS (SELECT 1 FROM quiz_question_links ready WHERE ready.quiz_id = z.id)
-  AND EXISTS (SELECT 1 FROM quiz_translations available WHERE available.quiz_id = z.id AND ${quizLocale('available.locale')})`;
+export const publicQuiz = `${readyQuiz} AND (z.course_id IS NULL OR ${linkedCourse})`;
 
 function group<T>(rows: T[], key: (row: T) => string) {
   const groups = new Map<string, T[]>();
@@ -50,7 +39,7 @@ export function quizReader(db: Sequelize, models: QuizModels) {
     if (!rows.length) return [];
     const ids = rows.map(row => row.id);
     const translations = await select<TranslationRow>(`
-      SELECT qt.quiz_id AS quizId, qt.locale, qt.title, qt.description
+      SELECT qt.quiz_id AS quizId, qt.locale, qt.title, qt.description, qt.provenance
       FROM quiz_translations qt JOIN quizzes z ON z.id = qt.quiz_id
       WHERE qt.quiz_id IN (:ids) ${publicOnly ? 'AND ' + quizLocale('qt.locale') : ''}
       ORDER BY qt.locale
@@ -61,14 +50,14 @@ export function quizReader(db: Sequelize, models: QuizModels) {
     return rows.map(row => {
       const questionIds = (byLink.get(row.id) ?? []).map(link => link.questionId);
       return { ...dates(row), questionIds, questionCount: questionIds.length,
-        translations: (byQuiz.get(row.id) ?? []).map(({ locale, title, description }) => ({ locale, title, description })) };
+        translations: (byQuiz.get(row.id) ?? []).map(({ locale, title, description, provenance }) => ({ locale, title, description, provenance })) };
     });
   }
 
   async function selectQuizzes(where: string, replacements: Bindings, transaction: Transaction, paginate = false) {
     return select<QuizProjection>(`
       SELECT z.id, z.slug, z.course_id AS courseId, linked.slug AS courseSlug, z.status,
-        z.passing_score AS passingScore, z.version, z.created_at AS createdAt, z.updated_at AS updatedAt
+        z.passing_score AS passingScore, z.version, z.created_at AS createdAt, z.updated_at AS updatedAt, z.provenance
       FROM quizzes z LEFT JOIN courses linked ON linked.id = z.course_id
       WHERE ${where}
       ORDER BY z.updated_at DESC, z.id ASC ${paginate ? 'LIMIT :limit OFFSET :offset' : ''}
@@ -77,7 +66,7 @@ export function quizReader(db: Sequelize, models: QuizModels) {
 
   async function selectQuestions(where: string, replacements: Bindings, transaction: Transaction, paginate = false) {
     return select<BankProjection>(`
-      SELECT bank.id, bank.kind, bank.version, bank.created_at AS createdAt, bank.updated_at AS updatedAt,
+      SELECT bank.id, bank.kind, bank.version, bank.created_at AS createdAt, bank.updated_at AS updatedAt, bank.provenance,
         EXISTS (SELECT 1 FROM quiz_question_links ref WHERE ref.question_id = bank.id) AS referenced
       FROM quiz_questions bank
       WHERE ${where} ORDER BY bank.updated_at DESC, bank.id ASC ${paginate ? 'LIMIT :limit OFFSET :offset' : ''}
@@ -91,7 +80,7 @@ export function quizReader(db: Sequelize, models: QuizModels) {
     const ids = rows.map(row => row.id);
     const where = { questionId: ids, ...(options.locales ? { locale: options.locales } : {}) };
     const prompts = await Prompt.findAll({ where, attributes: options.solutions
-      ? ['questionId', 'locale', 'prompt', 'explanation'] : ['questionId', 'locale', 'prompt'], order: [['locale', 'ASC']], transaction });
+      ? ['questionId', 'locale', 'prompt', 'explanation', 'provenance'] : ['questionId', 'locale', 'prompt', 'provenance'], order: [['locale', 'ASC']], transaction });
     const labels = await Label.findAll({ where, order: [['position', 'ASC']], transaction });
     const correct = options.solutions
       ? await Option.findAll({ where: { questionId: ids, correct: true }, order: [['position', 'ASC']], transaction }) : [];
@@ -104,8 +93,8 @@ export function quizReader(db: Sequelize, models: QuizModels) {
     return rows.map(row => ({
       ...dates(row), referenced: Boolean(Number(row.referenced)),
       correctOptions: (correctById.get(row.id) ?? []).map(({ position }) => position),
-      translations: (promptsById.get(row.id) ?? []).map(({ questionId, locale, prompt, explanation }) => ({
-        locale, prompt, explanation: explanation ?? '',
+      translations: (promptsById.get(row.id) ?? []).map(({ questionId, locale, prompt, explanation, provenance }) => ({
+        locale, prompt, explanation: explanation ?? '', provenance,
         options: (labelsByLocale.get(questionId + '/' + locale) ?? []).map(({ label }) => label),
         acceptedAnswers: (answersByLocale.get(questionId + '/' + locale) ?? []).map(({ answer }) => answer),
       })),
@@ -142,11 +131,12 @@ export function quizReader(db: Sequelize, models: QuizModels) {
       `, { id }, transaction);
     },
 
-    listQuizzes({ q, page, pageSize, publicOnly = false, status, language, courseId }: QuizListOptions) {
+    listQuizzes({ q, page, pageSize, publicOnly = false, status, language, courseId, standalone }: QuizListOptions) {
       return db.transaction(async transaction => {
         const predicates = [publicOnly ? publicQuiz : '1 = 1'];
         if (!publicOnly && status) predicates.push('z.status = :status');
         if (courseId) predicates.push('z.course_id = :courseId');
+        if (standalone) predicates.push('z.course_id IS NULL');
         const localized = `qt.quiz_id = z.id ${publicOnly ? 'AND ' + quizLocale('qt.locale') : ''} ${language ? 'AND qt.locale = :language' : ''}`;
         if (language) predicates.push(`EXISTS (SELECT 1 FROM quiz_translations qt WHERE ${localized})`);
         const search = normalizeEducationSearch(q);

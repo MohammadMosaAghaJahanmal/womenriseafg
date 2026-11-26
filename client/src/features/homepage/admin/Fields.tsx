@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, InputField, SelectField } from '../../../components/ui/Primitives';
 import { languageNames, languages, type Language } from '../../../i18n';
+import type { Theme } from '../../../preferences';
 import { TextArea } from '../../courses/admin/EditorFields';
 import { fileUrl } from '../../courses/student/api';
 import { QuizPicker } from '../../quizzes/AdminFields';
@@ -128,6 +129,11 @@ export function BrandingFields({ value, change }: { value: Branding; change: (va
   return <div className="homepage-admin-stack">
     <InputField label={t('platformName')} value={value.name} required maxLength={60} dir="auto"
       onChange={event => change({ ...value, name: event.target.value })} />
+    <SelectField label={t('defaultTheme')} value={value.defaultTheme ?? 'system'} aria-describedby="homepage-theme-help"
+      onChange={event => change({ ...value, defaultTheme: event.target.value as Theme })}>
+      {(['system', 'light', 'dark'] as const).map(theme => <option key={theme} value={theme}>{t('themeChoices.' + theme)}</option>)}
+    </SelectField>
+    <p className="homepage-admin-hint" id="homepage-theme-help">{t('themeHelp')}</p>
     <p className="homepage-admin-hint">{t('brandHelp')}</p>
     <div className="homepage-admin-grid">
       <BrandingImageField asset="logo" value={value.logoId} change={logoId => change({ ...value, logoId })} />

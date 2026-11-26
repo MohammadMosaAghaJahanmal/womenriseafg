@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Button, Card, InputField, SelectField, StatePanel } from '../../../components/ui/Primitives';
 import { preferredTitle } from '../../courses/admin/api';
+import { usePageOrder } from '../../admin/PageOrder';
 import { contentLanguageName } from '../../courses/admin/EditorFields';
 import { preferredName, statuses } from '../../education/api';
 import { EducationStatus } from '../../education/EducationList';
@@ -73,6 +74,8 @@ function BookList() {
   const load = useCallback((signal: AbortSignal) => listBooks({ q, status, categoryId, levelId, language, page, pageSize: 12 }, signal),
     [q, status, categoryId, levelId, language, page]);
   const { result, reload } = useEducationData(load);
+  const order = usePageOrder(result.status === 'ready' ? result.data.items : [],
+    (item, locale) => preferredTitle(item.translations, locale)?.title ?? item.slug);
   const { result: facets } = useEducationData(loadFacets);
   const values = facets.status === 'ready' ? facets.data : { categories: [], levels: [], languages: [] };
   const error = result.status === 'error' ? bookError(result.error, 'loadFailed') : '';
@@ -136,8 +139,9 @@ function BookList() {
       {!denied && <Button variant="secondary" onClick={reload}>{t('retry')}</Button>}
     </StatePanel>}
     {result.status === 'ready' && (result.data.items.length ? <>
+      <div className="admin-page-order">{order.field}</div>
       <ul className="course-list book-admin-list" aria-label={t('title')}>
-        {result.data.items.map(book => <BookRow key={book.id} book={book} search={search} />)}
+        {order.items.map(book => <BookRow key={book.id} book={book} search={search} />)}
       </ul>
       {result.data.total > result.data.pageSize && <BookPager page={result.data.page}
         pages={Math.ceil(result.data.total / result.data.pageSize)} onChange={setPage} />}

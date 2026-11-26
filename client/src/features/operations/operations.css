@@ -1,0 +1,12 @@
+.operations-page, .operations-section { display: grid; gap: 12px; min-inline-size: 0; }
+.operations-section { padding: clamp(12px, 2.5vw, 24px); }
+.operations-table { border-collapse: collapse; inline-size: 100%; table-layout: fixed; }
+.operations-table th, .operations-table td { padding: 8px 4px; text-align: start; overflow-wrap: anywhere; }
+.operations-table tr + tr { border-block-start: 1px solid var(--border); }
+.operations-table meter { inline-size: 100%; accent-color: var(--primary); }
+.operations-checks { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+.operations-form { display: grid; gap: 10px; }
+.operations-form .ui-btn { justify-self: start; }
+.operations-activity { display: grid; gap: 10px; margin: 0; padding-inline-start: 1.35rem; }
+.operations-activity li time { display: block; color: var(--muted); }
+

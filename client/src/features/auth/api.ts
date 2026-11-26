@@ -26,7 +26,7 @@ export function authStatus(error: unknown) {
 
 export async function authenticate(mode: AuthMode, credentials: Credentials) {
   const result = await client.post<unknown>('/auth/' + mode, credentials);
-  signedInResponse.parse(result.data);
+  return signedInResponse.parse(result.data).user;
 }
 
 export async function readIdentity(signal: AbortSignal) {

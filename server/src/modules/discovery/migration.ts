@@ -86,11 +86,29 @@ const constraints = [
   'learning_path_items_book_fk', 'learning_path_items_quiz_fk', 'daily_learning_singleton', 'daily_learning_mode',
   'daily_learning_activities',
 ];
+const collectionVersion = '016-course-collections';
+const collectionNames = {
+  learning_paths: 'course_collections',
+  learning_path_translations: 'course_collection_translations',
+  learning_path_items: 'course_collection_items',
+} as const;
+function collectionName(value: string) {
+  return value.replace(/learning_paths|learning_path_translations|learning_path_items/g, name =>
+    collectionNames[name as keyof typeof collectionNames]);
+}
+const collectionStatements = statements.slice(0, 3).map(statement => collectionName(statement)
+  .replace('PRIMARY KEY (path_id, position),', "PRIMARY KEY (path_id, position),\n    CONSTRAINT course_collection_items_course_only CHECK (kind = 'course'),"));
+const collectionColumns = Object.fromEntries(Object.entries(columns).filter(([table]) => table in collectionNames)
+  .map(([table, fields]) => [collectionName(table), fields]));
+const collectionConstraints = [...constraints.filter(name => !name.startsWith('daily_learning_')).map(collectionName),
+  'course_collection_items_course_only'];
 
 export class DiscoveryMigrationError extends Error {}
 
-async function verifySchema(db: Sequelize, transaction: Transaction) {
-  const queryOptions = { type: QueryTypes.SELECT as const, transaction, replacements: { tables: Object.keys(columns) } };
+async function verifySchema(db: Sequelize, transaction: Transaction, collection: boolean) {
+  const expectedColumns = collection ? collectionColumns : columns;
+  const expectedConstraints = collection ? collectionConstraints : constraints;
+  const queryOptions = { type: QueryTypes.SELECT as const, transaction, replacements: { tables: Object.keys(expectedColumns) } };
   const fields = await db.query<{ tableName: string; columnName: string; engine: string; collation: string }>(`
     SELECT c.TABLE_NAME AS tableName, c.COLUMN_NAME AS columnName, t.ENGINE AS engine, t.TABLE_COLLATION AS collation
     FROM information_schema.COLUMNS c
@@ -102,13 +120,22 @@ async function verifySchema(db: Sequelize, transaction: Transaction) {
   const fieldNames = new Set(fields.map(row => row.tableName + '.' + row.columnName));
   const actualConstraints = new Set(definitions.map(row => row.name));
   if (fields.some(row => row.engine !== 'InnoDB' || row.collation !== 'utf8mb4_unicode_ci') ||
-      Object.entries(columns).some(([table, fields]) => fields.some(field => !fieldNames.has(table + '.' + field))) ||
-      constraints.some(name => !actualConstraints.has(name))) {
+      Object.entries(expectedColumns).some(([table, fields]) => fields.some(field => !fieldNames.has(table + '.' + field))) ||
+      expectedConstraints.some(name => !actualConstraints.has(name))) {
     throw new DiscoveryMigrationError('The discovery schema is incompatible. Review the database before retrying.');
   }
 }
 
 export function migrateDiscovery(db: Sequelize) {
+  return runDiscoveryMigration(db, false);
+}
+
+export function migrateCollections(db: Sequelize) {
+  return runDiscoveryMigration(db, true);
+}
+
+function runDiscoveryMigration(db: Sequelize, collection: boolean) {
+  const target = collection ? collectionVersion : version;
   const lock = 'womenriseafg:discovery:' + createHash('sha256').update(db.getDatabaseName()).digest('hex').slice(0, 40);
   const lockOptions = { type: QueryTypes.SELECT as const, bind: { lock } };
   return db.transaction(async connection => {
@@ -119,25 +146,29 @@ export function migrateDiscovery(db: Sequelize) {
       const records = await db.query<{ version: string }>('SELECT version FROM identity_schema_migrations',
         { type: QueryTypes.SELECT, transaction: connection });
       const versions = new Set(records.map(record => record.version));
-      if (versions.has(version)) {
-        await verifySchema(db, connection);
+      if (versions.has(target)) {
+        await verifySchema(db, connection, collection);
         return false;
       }
-      if (!versions.has('008-quizzes')) throw new DiscoveryMigrationError('Apply the quiz migration before the discovery migration.');
-      for (const statement of statements) await db.query(statement, { transaction: connection });
-      await verifySchema(db, connection);
+      if (!versions.has(collection ? version : '008-quizzes')) {
+        throw new DiscoveryMigrationError('Apply the preceding discovery migrations before retrying.');
+      }
+      for (const statement of collection ? collectionStatements : statements) await db.query(statement, { transaction: connection });
+      await verifySchema(db, connection, collection);
       await db.transaction(async transaction => {
         const { Permission, RolePermission } = defineIdentityModels(db);
-        for (const permissionCode of [discoveryManagePermission, discoveryPublishPermission]) {
-          await Permission.upsert({ code: permissionCode }, { transaction });
-          for (const roleCode of administratorRoles) {
-            await RolePermission.upsert({ roleCode, permissionCode }, { transaction });
+        if (!collection) {
+          for (const permissionCode of [discoveryManagePermission, discoveryPublishPermission]) {
+            await Permission.upsert({ code: permissionCode }, { transaction });
+            for (const roleCode of administratorRoles) {
+              await RolePermission.upsert({ roleCode, permissionCode }, { transaction });
+            }
           }
+          await db.query("INSERT INTO daily_learning_settings (id, mode, activities, version, updated_at) VALUES (1, 'automatic', JSON_ARRAY(), 1, NOW(3)) ON DUPLICATE KEY UPDATE id = 1",
+            { transaction });
         }
-        await db.query("INSERT INTO daily_learning_settings (id, mode, activities, version, updated_at) VALUES (1, 'automatic', JSON_ARRAY(), 1, NOW(3)) ON DUPLICATE KEY UPDATE id = 1",
-          { transaction });
         await db.query('INSERT INTO identity_schema_migrations (version, applied_at) VALUES ($version, $appliedAt)',
-          { bind: { version, appliedAt: new Date() }, transaction });
+          { bind: { version: target, appliedAt: new Date() }, transaction });
       });
       return true;
     } finally {

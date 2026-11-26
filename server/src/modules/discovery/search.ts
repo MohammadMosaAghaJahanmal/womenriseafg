@@ -82,6 +82,8 @@ type SearchFilter = Partial<Omit<SearchQuery, 'q' | 'page' | 'pageSize'>> & {
   ids?: string[];
   kinds?: DiscoverableKind[];
   activitiesOnly?: boolean;
+  slug?: string;
+  parentSlug?: string;
 };
 type SearchRow = Omit<SearchEntry, 'href' | 'fileLanguage'> & {
   slug: string;
@@ -131,6 +133,8 @@ function candidateQuery(filter: SearchFilter) {
         else clauses.push(`${kind} = :kind`);
       }
       if (filter.ids) clauses.push(`${id} IN (:ids)`);
+      if (filter.slug) clauses.push(`${slug} = :slug`);
+      if (filter.parentSlug) clauses.push(parent ? `${parent} = :parentSlug` : '0 = 1');
       if (filter.language) clauses.push(`${branch.language ?? 't.locale'} = :language`);
       const selected = [
         [filter.subjectId, 'subjectId', taxons.subject],
@@ -205,6 +209,13 @@ export function discoverySearch(db: Sequelize) {
     return (await locate(refs, preference, transaction)).map(row => row ? projected(row) : null);
   }
 
+  async function publishedTarget(kind: DiscoverableKind, slug: string, parentSlug?: string, transaction?: Transaction) {
+    const filter = { kind, slug, parentSlug };
+    const [row] = await db.query<SearchRow>(`${queryBase(filter)} ${select} * FROM ranked WHERE translation = 1 LIMIT 1`,
+      { type: QueryTypes.SELECT, replacements: parameters(filter), transaction });
+    return row ? projected(row) : null;
+  }
+
   async function recommendations(kind: DiscoverableKind, id: string, preference = 'en') {
     const [source] = await locate([{ kind, id }], preference);
     if (!source) return [];
@@ -230,5 +241,5 @@ export function discoverySearch(db: Sequelize) {
     return rows[0] ? projected(rows[0]) : null;
   }
 
-  return { search, references, recommendations, pickDaily };
+  return { search, references, recommendations, pickDaily, publishedTarget };
 }

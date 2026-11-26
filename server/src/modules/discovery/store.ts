@@ -31,7 +31,20 @@ function writeError(error: unknown): never {
 }
 
 export function createDiscoveryStore(db: Sequelize) {
+  return createGroupedDiscoveryStore(db, false);
+}
+
+export function createCollectionStore(db: Sequelize) {
+  return createGroupedDiscoveryStore(db, true);
+}
+
+function createGroupedDiscoveryStore(db: Sequelize, collection: boolean) {
   const discovery = discoverySearch(db);
+  const table = collection ? 'course_collections' : 'learning_paths';
+  const translationTable = collection ? 'course_collection_translations' : 'learning_path_translations';
+  const itemTable = collection ? 'course_collection_items' : 'learning_path_items';
+  const publicVisibility = collection ? `p.status = 'published' AND EXISTS (
+    SELECT 1 FROM course_collection_translations t WHERE t.path_id = p.id AND ${publishedLocale('t.locale')})` : publicPath;
 
   async function dailySettings(transaction?: Transaction, lock = false): Promise<DailySettings> {
     const [row] = await db.query<DailyRow>(`SELECT mode, CAST(activities AS CHAR) AS activities, version
@@ -41,18 +54,18 @@ export function createDiscoveryStore(db: Sequelize) {
   }
 
   function pathTranslations(id: string, transaction: Transaction, publicOnly = false) {
-    return db.query<Translation>(`SELECT locale, title, description FROM learning_path_translations t
+    return db.query<Translation>(`SELECT locale, title, description FROM ${translationTable} t
       WHERE t.path_id = :id ${publicOnly ? 'AND ' + publishedLocale('t.locale') : ''} ORDER BY locale`,
       { type: QueryTypes.SELECT, replacements: { id }, transaction });
   }
 
   function pathActivities(id: string, transaction: Transaction) {
     return db.query<Reference>(`SELECT kind, COALESCE(course_id, lesson_id, media_id, book_id, quiz_id) AS id
-      FROM learning_path_items WHERE path_id = :id ORDER BY position`, { type: QueryTypes.SELECT, replacements: { id }, transaction });
+      FROM ${itemTable} WHERE path_id = :id ORDER BY position`, { type: QueryTypes.SELECT, replacements: { id }, transaction });
   }
 
   async function pathRow(id: string, transaction: Transaction, lock = false) {
-    const [row] = await db.query<PathRow>(`SELECT ${pathFields} FROM learning_paths p WHERE p.id = :id${lock ? ' FOR UPDATE' : ''}`,
+    const [row] = await db.query<PathRow>(`SELECT ${pathFields} FROM ${table} p WHERE p.id = :id${lock ? ' FOR UPDATE' : ''}`,
       { type: QueryTypes.SELECT, replacements: { id }, transaction });
     if (!row) throw new DiscoveryError('NOT_FOUND');
     return row;
@@ -68,6 +81,7 @@ export function createDiscoveryStore(db: Sequelize) {
   }
 
   async function validateActivityList(activities: Reference[], transaction: Transaction) {
+    if (collection && activities.some(item => item.kind !== 'course')) throw new DiscoveryError('INVALID_REFERENCE');
     const chosen = await discovery.references(activities, 'en', transaction);
     if (chosen.some(item => !item)) throw new DiscoveryError('INVALID_REFERENCE');
   }
@@ -94,16 +108,16 @@ export function createDiscoveryStore(db: Sequelize) {
   }
 
   async function writeContents(id: string, input: PathInput, transaction: Transaction) {
-    await db.query('DELETE FROM learning_path_translations WHERE path_id = :id', { replacements: { id }, transaction });
-    await db.query('DELETE FROM learning_path_items WHERE path_id = :id', { replacements: { id }, transaction });
+    await db.query(`DELETE FROM ${translationTable} WHERE path_id = :id`, { replacements: { id }, transaction });
+    await db.query(`DELETE FROM ${itemTable} WHERE path_id = :id`, { replacements: { id }, transaction });
     for (const translation of input.translations) {
-      await db.query(`INSERT INTO learning_path_translations (path_id, locale, title, description, search_text)
+      await db.query(`INSERT INTO ${translationTable} (path_id, locale, title, description, search_text)
         VALUES (:id, :locale, :title, :description, :search)`,
       { replacements: { id, ...translation, search: normalizeEducationSearch(translation.title + ' ' + translation.description) }, transaction });
     }
     for (const [position, reference] of input.activities.entries()) {
       const media = reference.kind === 'video' || reference.kind === 'short';
-      await db.query(`INSERT INTO learning_path_items (path_id, position, kind, course_id, lesson_id, media_id, book_id, quiz_id)
+      await db.query(`INSERT INTO ${itemTable} (path_id, position, kind, course_id, lesson_id, media_id, book_id, quiz_id)
         VALUES (:id, :position, :kind, :course, :lesson, :media, :book, :quiz)`,
       { replacements: { id, position, kind: reference.kind,
         course: reference.kind === 'course' ? reference.id : null,
@@ -150,12 +164,12 @@ export function createDiscoveryStore(db: Sequelize) {
         const filters = ['1 = 1'];
         if (query.status) filters.push('p.status = :status');
         if (normalized) filters.push(`(LOCATE(:normalized, CONVERT(p.slug USING utf8mb4) COLLATE utf8mb4_unicode_ci) > 0
-          OR EXISTS (SELECT 1 FROM learning_path_translations t WHERE t.path_id = p.id AND LOCATE(:normalized, t.search_text) > 0))`);
-        const clause = 'FROM learning_paths p WHERE ' + filters.join(' AND ');
+          OR EXISTS (SELECT 1 FROM ${translationTable} t WHERE t.path_id = p.id AND LOCATE(:normalized, t.search_text) > 0))`);
+        const clause = `FROM ${table} p WHERE ` + filters.join(' AND ');
         const options = { type: QueryTypes.SELECT as const, transaction, replacements: { ...query, normalized, offset, limit: query.pageSize } };
         const [count] = await db.query<{ total: number | string }>('SELECT COUNT(*) AS total ' + clause, options);
         const rows = await db.query<PathRow & { activityCount: number | string }>(`SELECT ${pathFields}, (
-          SELECT COUNT(*) FROM learning_path_items a WHERE a.path_id = p.id) AS activityCount ${clause}
+          SELECT COUNT(*) FROM ${itemTable} a WHERE a.path_id = p.id) AS activityCount ${clause}
           ORDER BY p.updated_at DESC, p.id LIMIT :limit OFFSET :offset`, options);
         const items = [];
         for (const row of rows) items.push({ ...row, activityCount: Number(row.activityCount),
@@ -164,9 +178,32 @@ export function createDiscoveryStore(db: Sequelize) {
       });
     },
 
+    async publicCollections(query: PathListQuery & { language?: string; preferred?: string }) {
+      const term = normalizeEducationSearch(query.q);
+      const language = query.language ?? null;
+      const preferred = query.preferred ?? 'en';
+      const locale = 't.path_id = p.id AND ' + publishedLocale('t.locale');
+      // Match the same public translation that the list will display for this result.
+      const selectedLocale = `SELECT t.locale FROM ${translationTable} t WHERE ${locale}
+        AND (:language IS NULL OR t.locale = :language)
+        ORDER BY t.locale = :preferred DESC, t.locale = 'en' DESC, t.locale LIMIT 1`;
+      const clause = `FROM ${table} p JOIN ${translationTable} t ON t.path_id = p.id AND t.locale = (${selectedLocale})
+        WHERE ${publicVisibility} AND (:term = '' OR LOCATE(:term, t.search_text) > 0)`;
+      return db.transaction(async transaction => {
+        const options = { transaction, type: QueryTypes.SELECT as const,
+          replacements: { term, language, preferred, limit: query.pageSize, offset: (query.page - 1) * query.pageSize } };
+        const [count] = await db.query<{ total: number | string }>('SELECT COUNT(*) AS total ' + clause, options);
+        const rows = await db.query<Translation & { id: string; slug: string }>(
+          `SELECT p.id, p.slug, t.locale, t.title, t.description ${clause}
+          ORDER BY p.updated_at DESC, p.id LIMIT :limit OFFSET :offset`, options);
+        const items = rows.map(({ slug, ...row }) => ({ ...row, kind: 'collection', href: '/collections/' + slug }));
+        return { items, total: Number(count?.total ?? 0), page: query.page, pageSize: query.pageSize };
+      });
+    },
+
     async publicPath(slug: string, language?: string) {
       return db.transaction(async transaction => {
-        const [row] = await db.query<PathRow>(`SELECT ${pathFields} FROM learning_paths p WHERE p.slug = :slug AND ${publicPath}`,
+        const [row] = await db.query<PathRow>(`SELECT ${pathFields} FROM ${table} p WHERE p.slug = :slug AND ${publicVisibility}`,
           { type: QueryTypes.SELECT, replacements: { slug }, transaction });
         if (!row) throw new DiscoveryError('NOT_FOUND');
         const { id, translations, activities } = await expand(row, transaction, true, language);
@@ -183,7 +220,7 @@ export function createDiscoveryStore(db: Sequelize) {
         return await db.transaction(async transaction => {
           await validatePath(input, transaction);
           const id = randomUUID();
-          await db.query(`INSERT INTO learning_paths (id, slug, status, subject_id, level_id, created_at, updated_at)
+          await db.query(`INSERT INTO ${table} (id, slug, status, subject_id, level_id, created_at, updated_at)
             VALUES (:id, :slug, 'draft', :subjectId, :levelId, NOW(3), NOW(3))`, { replacements: { id, ...input }, transaction });
           await writeContents(id, input, transaction);
           return expand(await pathRow(id, transaction), transaction);
@@ -198,7 +235,7 @@ export function createDiscoveryStore(db: Sequelize) {
           if (row.version !== version) throw new DiscoveryError('STALE_VERSION');
           if (!editable.includes(row.status)) throw new DiscoveryError('INVALID_TRANSITION');
           await validatePath(input, transaction);
-          await db.query(`UPDATE learning_paths SET slug = :slug, subject_id = :subjectId, level_id = :levelId,
+          await db.query(`UPDATE ${table} SET slug = :slug, subject_id = :subjectId, level_id = :levelId,
             version = version + 1, updated_at = NOW(3) WHERE id = :id`, { replacements: { id, ...input }, transaction });
           await writeContents(id, input, transaction);
           return expand(await pathRow(id, transaction), transaction);
@@ -218,7 +255,7 @@ export function createDiscoveryStore(db: Sequelize) {
           await validateTaxonomy(row.subjectId, row.levelId, transaction);
           await validateActivityList(activities, transaction);
         }
-        await db.query('UPDATE learning_paths SET status = :status, version = version + 1, updated_at = NOW(3) WHERE id = :id',
+        await db.query(`UPDATE ${table} SET status = :status, version = version + 1, updated_at = NOW(3) WHERE id = :id`,
           { replacements: { id, status }, transaction });
         return expand(await pathRow(id, transaction), transaction);
       });
@@ -229,7 +266,7 @@ export function createDiscoveryStore(db: Sequelize) {
         const row = await pathRow(id, transaction, true);
         if (row.version !== version) throw new DiscoveryError('STALE_VERSION');
         if (!deletable.includes(row.status)) throw new DiscoveryError('INVALID_TRANSITION');
-        await db.query('DELETE FROM learning_paths WHERE id = :id', { replacements: { id }, transaction });
+        await db.query(`DELETE FROM ${table} WHERE id = :id`, { replacements: { id }, transaction });
       });
     },
   };

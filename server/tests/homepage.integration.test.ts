@@ -18,11 +18,14 @@ import { createBookStore } from '../src/modules/books/store';
 import { migrateCertificates } from '../src/modules/certificates/migration';
 import type { CourseInput } from '../src/modules/courses/contract';
 import { migrateCourses } from '../src/modules/courses/migration';
+import { migrateCurriculumAuthoring } from '../src/modules/courses/authoringMigration';
+import { fixtureCredit } from './fixtures/curriculum';
 import { createCourseStore } from '../src/modules/courses/store';
 import { migrateDiscovery } from '../src/modules/discovery/migration';
 import { createDiscoveryStore } from '../src/modules/discovery/store';
 import { migrateEducation } from '../src/modules/education/migration';
 import { migrateLearningMedia } from '../src/modules/learning-media/migration';
+import { migrateLearningMediaAltText } from '../src/modules/learning-media/altMigration';
 import { createLearningMediaStore } from '../src/modules/learning-media/store';
 import type { MediaKind } from '../src/modules/media/contract';
 import { migrateMedia } from '../src/modules/media/migration';
@@ -79,7 +82,8 @@ test('homepage publishes visible multilingual panels, protects settings and rank
 
   try {
     for (const migrate of [migrateIdentity, migrateEducation, migrateMedia, migrateCourses, migrateLearningMedia, migrateBooks,
-      migrateQuizzes, migrateDiscovery, migrateCertificates, migrateHomepage]) await migrate(db);
+      migrateQuizzes, migrateCurriculumAuthoring, migrateDiscovery, migrateCertificates, migrateHomepage,
+      migrateLearningMediaAltText]) await migrate(db);
     assert.equal(await migrateHomepage(db), false);
     migrated = true;
     saved = (await homepage.getSettings()).settings;
@@ -105,7 +109,7 @@ test('homepage publishes visible multilingual panels, protects settings and rank
       const translations = labels(suffix, localized);
       const input: CourseInput = {
         slug: 'home-' + suffix + '-' + token, thumbnailId: null, subjectId, levelId: null, gradeId: null, instructor: '',
-        estimatedMinutes: 18, tagIds: [], relatedCourseIds: [],
+        estimatedMinutes: 18, tagIds: [], relatedCourseIds: [], provenance: fixtureCredit,
         translations: translations.map(copy => ({ ...copy, objectives: '', prerequisites: '' })),
         chapters: [{ translations, lessons: [{ slug: 'first', kind: 'text', mediaId: null, resources: [],
           translations: translations.map(copy => ({ ...copy, body: 'First lesson content.' })),
@@ -138,7 +142,8 @@ test('homepage publishes visible multilingual panels, protects settings and rank
         slug: 'home-' + suffix + '-' + token, kind, mediaId, categoryId: subject!.categoryId,
         relatedCourseId: null, relatedLessonId: null,
         aiOrigin: kind === 'resource' ? 'ai-generated' : 'human', aiTool: kind === 'resource' ? 'Fixture generator' : '',
-        aiNotes: kind === 'resource' ? 'Synthetic illustration with no real learner data.' : '', translations: labels(suffix),
+        aiNotes: kind === 'resource' ? 'Synthetic illustration with no real learner data.' : '',
+        translations: labels(suffix).map(copy => ({ ...copy, imageAlt: kind === 'resource' ? 'A diagram of simple shapes' : '' })),
       }, owner.id);
       learningIds.push(entry.id);
       for (const status of ['educational-review', 'approved', 'published'] as const) {
@@ -197,9 +202,11 @@ test('homepage publishes visible multilingual panels, protects settings and rank
     const admin = '/admin/homepage';
     await json(await request(admin), 401);
     await json(await request(admin, 'GET', undefined, reviewerCookie), 403);
+    await db.query("UPDATE homepage_settings SET config = JSON_REMOVE(config, '$.branding.defaultTheme') WHERE id = 1");
     const { settings } = await json<{ settings: HomepageSettings }>(await request(admin, 'GET', undefined, cookie));
+    assert.equal(settings.branding.defaultTheme, 'system');
     const config = { ...settings, sections: [...settings.sections].reverse(),
-      branding: { ...settings.branding, name: title('brand'), logoId: logo.id, faviconId: logo.id },
+      branding: { ...settings.branding, name: title('brand'), logoId: logo.id, faviconId: logo.id, defaultTheme: 'dark' as const },
       featuredCourseIds: [featured.id], recommendedBookIds: [book.id],
       announcements: [{ enabled: true, translations: [{ locale: 'fa-AF', title: 'خبر', body: 'مطلب آموزشی تازه' }] },
         { enabled: false, translations: [{ locale: 'en', title: 'Hidden announcement', body: 'Private draft.' }] }],
@@ -207,12 +214,20 @@ test('homepage publishes visible multilingual panels, protects settings and rank
     await json(await request(admin, 'PUT', { ...config, featuredCourseIds: [draft.id] }, cookie), 422);
     await json(await request(admin, 'PUT', { ...config, branding: { ...config.branding, logoId: hidden.id } }, cookie), 422);
     await json(await request(admin, 'PUT', config, cookie, 'https://other.test'), 403);
+    await json(await request(admin, 'PUT', config, reviewerCookie), 403);
     const updated = await json<{ settings: HomepageSettings; selected: { featuredCourses: HomepageItem[]; recommendedBooks: HomepageItem[] } }>(
       await request(admin, 'PUT', config, cookie));
     assert.equal(updated.settings.version, config.version + 1);
+    assert.equal(updated.settings.branding.defaultTheme, 'dark');
     assert.deepEqual(updated.selected.featuredCourses.map(item => item.id), [featured.id]);
     assert.deepEqual(updated.selected.recommendedBooks.map(item => item.id), [book.id]);
     await json(await request(admin, 'PUT', config, cookie), 409);
+    const legacyEditor = { ...updated.settings, branding: { ...updated.settings.branding } };
+    delete legacyEditor.branding.defaultTheme;
+    const retained = await json<{ settings: HomepageSettings }>(await request(admin, 'PUT', legacyEditor, cookie));
+    assert.equal(retained.settings.branding.defaultTheme, 'dark');
+    const publishedBranding = await json<{ branding: HomepageBranding }>(await request('/homepage/branding'));
+    assert.equal(publishedBranding.branding.defaultTheme, 'dark');
     const picker = await json<{ items: { id: string }[] }>(
       await request(admin + '/images?q=logo', 'GET', undefined, cookie));
     assert.ok(picker.items.some(item => item.id === logo.id));

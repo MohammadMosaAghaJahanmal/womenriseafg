@@ -1,0 +1,14 @@
+.staff-page { display: grid; gap: var(--space-4, 16px); min-inline-size: 0; }
+.staff-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.staff-card { padding: clamp(12px, 2.5vw, 24px); min-inline-size: 0; }
+.staff-fields { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+.staff-fields > .ui-field { flex: 1 1 14rem; min-inline-size: min(100%, 12rem); }
+.staff-form { display: grid; gap: 12px; }
+.staff-form > .ui-btn { justify-self: start; }
+.staff-assignment-header { display: flex; gap: 8px 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.staff-note { color: var(--muted); overflow-wrap: anywhere; white-space: pre-wrap; }
+.staff-copy { overflow-wrap: anywhere; white-space: pre-wrap; }
+.staff-audit { display: grid; gap: 6px 12px; grid-template-columns: max-content minmax(0,1fr); font-size: .9rem; }
+.staff-audit dd { margin: 0; overflow-wrap: anywhere; }
+.staff-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+

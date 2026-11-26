@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Layers3, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Activity, BookMarked, ChevronRight, ClipboardCheck, Files, FolderTree, GraduationCap, LibraryBig, PanelsTopLeft, Route, UserRound, Video } from 'lucide-react';
+import { Layers3, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Activity, Award, BookMarked, ChevronRight, ClipboardCheck, Files, FolderTree, GraduationCap, LibraryBig, MessageSquareText, PanelsTopLeft, Route, UsersRound, UserRound, Video, type LucideIcon } from 'lucide-react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button, Card, PanelDialog, SelectField, StatePanel } from '../../components/ui/Primitives';
 import { languageNames, languages, type Language } from '../../i18n';
 import { usePreferences, type Theme } from '../../preferences';
+import { readIdentity } from '../auth/api';
+import { useEducationData } from '../education/useEducationData';
 import { AdminCourses, matchCourseRoute } from '../courses/admin/AdminCourses';
 import { courseAdminPath } from '../courses/admin/api';
 import { AdminEducation, matchEducationRoute } from '../education/AdminEducation';
@@ -18,15 +20,20 @@ import { AdminMedia, matchMediaRoute } from '../media/AdminMedia';
 import { mediaPath } from '../media/api';
 import { AdminQuizzes } from '../quizzes/AdminQuizzes';
 import { quizAdminPath } from '../quizzes/api';
-import { AdminDiscovery, pathsAdminPath } from '../discovery/AdminDiscovery';
+import { AdminDiscovery, collectionsAdminPath, pathsAdminPath } from '../discovery/AdminDiscovery';
 import { BrandLogo, useBranding } from '../homepage/Branding';
 import { HomepageAdmin } from '../homepage/admin/HomepageAdmin';
 import { homepageAdminPath } from '../homepage/admin/api';
+import AdminCertificates from '../engagement/AdminCertificates';
+import { StaffAdmin } from '../staff/StaffPages';
+import { staffAdminPath } from '../staff/api';
+import CorrectionQueue from '../privacy/CorrectionQueue';
+import { AdminOperations, operationsAdminPath } from '../operations/AdminOperations';
 import ComponentLibrary from './ComponentLibrary';
 import './strings';
 import './admin.css';
 
-const destinations = [
+const destinations: { to: string; label: string; Icon: LucideIcon; permission?: string }[] = [
   { to: '/admin', label: 'overview', Icon: LayoutDashboard },
   { to: educationPath(), label: 'education:title', Icon: FolderTree },
   { to: courseAdminPath, label: 'courseAdmin:title', Icon: LibraryBig },
@@ -34,15 +41,23 @@ const destinations = [
   { to: bookAdminPath, label: 'bookAdmin:title', Icon: BookMarked },
   { to: quizAdminPath, label: 'quiz:adminTitle', Icon: ClipboardCheck },
   { to: pathsAdminPath, label: 'learningDiscovery:manage', Icon: Route },
+  { to: collectionsAdminPath, label: 'learningDiscovery:collections', Icon: Layers3 },
   { to: homepageAdminPath, label: 'homepageAdmin:title', Icon: PanelsTopLeft },
+  { to: '/admin/certificates', label: 'certificateSettings:title', Icon: Award, permission: 'certificates:manage' },
+  { to: '/admin/corrections', label: 'privacy:queueTitle', Icon: MessageSquareText, permission: 'corrections:manage' },
+  { to: staffAdminPath, label: 'staff:adminTitle', Icon: UsersRound, permission: 'staff:manage' },
+  { to: operationsAdminPath, label: 'operations:title', Icon: Activity, permission: 'operations:manage' },
   { to: mediaPath, label: 'media:title', Icon: Files },
   { to: '/admin/components', label: 'library', Icon: Layers3 },
   { to: '/status', label: 'service', Icon: Activity },
 ];
 
-function SidebarLinks({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
+function SidebarLinks({ collapsed = false, onNavigate, permissions }: {
+  collapsed?: boolean; onNavigate?: () => void; permissions: string[];
+}) {
   const { t } = useTranslation(['admin', 'auth', 'education', 'media', 'courseAdmin', 'learningMediaAdmin', 'bookAdmin', 'quiz', 'learningDiscovery', 'homepageAdmin']);
-  return <nav className="admin-links" aria-label={t('nav')}>{destinations.map(({ to, label, Icon }) =>
+  return <nav className="admin-links" aria-label={t('nav')}>{destinations
+    .filter(destination => !destination.permission || permissions.includes(destination.permission)).map(({ to, label, Icon }) =>
     <NavLink key={to} to={to} end={to === '/admin'}
       onClick={onNavigate} aria-label={collapsed ? t(label) : undefined} title={collapsed ? t(label) : undefined}>
       <Icon size={19} aria-hidden="true" /><span className={collapsed ? 'admin-sr' : undefined}>{t(label)}</span>
@@ -114,6 +129,8 @@ function Overview() {
 export default function AdminPage() {
   const { t } = useTranslation(['admin', 'education', 'media', 'courseAdmin', 'learningMediaAdmin', 'bookAdmin', 'quiz', 'learningDiscovery', 'homepageAdmin']);
   const { branding, refresh } = useBranding();
+  const { result: identity } = useEducationData(readIdentity);
+  const permissions = identity.status === 'ready' ? identity.data?.permissions ?? [] : [];
   const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
@@ -134,8 +151,14 @@ export default function AdminPage() {
   const quizzes = route === quizAdminPath || route.startsWith(quizAdminPath + '/');
   const discovery = route.startsWith('/admin/discovery/');
   const homepage = route === homepageAdminPath;
+  const certificates = route === '/admin/certificates';
+  const corrections = route === '/admin/corrections';
+  const staff = route === staffAdminPath;
+  const operations = route === operationsAdminPath;
   const page = route === '/admin' ? 'overview' : route === '/admin/components' ? 'library' :
-    homepage ? 'homepageAdmin:title' : quizzes ? 'quiz:adminTitle' : discovery ? 'learningDiscovery:manage' :
+    certificates ? 'certificateSettings:title' : corrections ? 'privacy:queueTitle' : staff ? 'staff:adminTitle' : operations ? 'operations:title' :
+    homepage ? 'homepageAdmin:title' : quizzes ? 'quiz:adminTitle' :
+    route.startsWith(collectionsAdminPath) ? 'learningDiscovery:collections' : discovery ? 'learningDiscovery:manage' :
     books ? 'bookAdmin:title' : learningMedia ? 'learningMediaAdmin:title' : courses ? 'courseAdmin:title' : media ? 'media:title' :
       education ? 'education:' + ('kind' in education ? education.kind : 'title') : 'unknown';
   useEffect(() => { document.title = t(page) + ' · ' + branding.name; }, [t, page, branding.name]);
@@ -150,7 +173,7 @@ export default function AdminPage() {
     <aside className="admin-side">
       <Link className="admin-brand" aria-label={branding.name} to="/"><span><BrandLogo id={branding.logoId} /></span>
         <bdi className={collapsed ? 'admin-sr' : undefined}>{branding.name}</bdi></Link>
-      <SidebarLinks collapsed={collapsed} />
+      <SidebarLinks collapsed={collapsed} permissions={permissions} />
       <button className="admin-collapse" type="button" onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed} aria-label={t(collapsed ? 'expand' : 'collapse')}>
         {collapsed ? <PanelLeftOpen className="ui-direction" size={19} /> : <PanelLeftClose className="ui-direction" size={19} />}
         {!collapsed && <span>{t('collapse')}</span>}
@@ -160,13 +183,14 @@ export default function AdminPage() {
       <header className="admin-top">
         <div className="admin-mobile-trigger"><PanelDialog drawer title={t('admin')} closeLabel={t('close')} open={drawer} onOpenChange={setDrawer}
           trigger={<Button variant="ghost" className="ui-icon-btn" aria-label={t('openNav')}><Menu size={21} /></Button>}>
-          <SidebarLinks onNavigate={() => setDrawer(false)} />
+          <SidebarLinks permissions={permissions} onNavigate={() => setDrawer(false)} />
         </PanelDialog></div>
         <nav aria-label={t('breadcrumb')} className="admin-breadcrumb"><Link to="/admin">{t('admin')}</Link><ChevronRight className="ui-direction" size={15} aria-hidden="true" /><span aria-current="page">{t(page)}</span></nav>
         <PreferenceFields />
       </header>
       <main className="admin-main" id="admin-main" tabIndex={-1} ref={main}>
-        {homepage ? <HomepageAdmin onSaved={refresh} /> : quizzes ? <AdminQuizzes route={route} /> : discovery ? <AdminDiscovery key={route} route={route} /> :
+        {certificates ? <AdminCertificates /> : corrections ? <CorrectionQueue /> : staff ? <StaffAdmin /> : operations ? <AdminOperations /> :
+          homepage ? <HomepageAdmin onSaved={refresh} /> : quizzes ? <AdminQuizzes route={route} /> : discovery ? <AdminDiscovery key={route} route={route} /> :
           books ? <AdminBooks route={books} /> : learningMedia ? <AdminLearningMedia route={learningMedia} /> : courses ? <AdminCourses route={courses} /> :
           media ? <AdminMedia route={media} /> : education ? <AdminEducation route={education} /> : page === 'overview' ? <Overview /> : page === 'library' ? <ComponentLibrary /> :
           <><h1>{t('unknown')}</h1><StatePanel kind="empty" title={t('back')}><Button asChild><Link to="/admin">{t('overview')}</Link></Button></StatePanel></>}

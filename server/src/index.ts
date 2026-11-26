@@ -20,8 +20,12 @@ import { createBookStore } from './modules/books/store';
 import { createQuizRoutes } from './modules/quizzes/routes';
 import { createQuizStore } from './modules/quizzes/store';
 import { createDiscoveryRoutes } from './modules/discovery/routes';
-import { createDiscoveryStore } from './modules/discovery/store';
+import { createCollectionStore, createDiscoveryStore } from './modules/discovery/store';
 import { createCertificateRoutes } from './modules/certificates/routes';
+import { createCertificateManagementRoutes } from './modules/certificates/management';
+import { createCorrectionRoutes } from './modules/corrections/routes';
+import { createStaffRoutes } from './modules/staff/routes';
+import { createOperationsRoutes } from './modules/operations/routes';
 import { createHomepageRoutes } from './modules/homepage/routes';
 import { createHomepageStore } from './modules/homepage/store';
 
@@ -55,8 +59,12 @@ function start() {
       createLearningMediaStore(db, { shortMaxSeconds: settings.shortMaxSeconds }), media, identity, routeOptions),
     bookRoutes: createBookRoutes(createBookStore(db), media, files, identity, routeOptions),
     quizRoutes: createQuizRoutes(createQuizStore(db), identity, routeOptions),
-    discoveryRoutes: createDiscoveryRoutes(createDiscoveryStore(db), identity, routeOptions),
-    certificateRoutes: createCertificateRoutes(db, courses, routeOptions),
+    discoveryRoutes: createDiscoveryRoutes(createDiscoveryStore(db), identity, routeOptions, createCollectionStore(db)),
+    certificateRoutes: createCertificateRoutes(db, courses, { ...routeOptions, managed: true }),
+    certificateManagementRoutes: createCertificateManagementRoutes(db, identity, routeOptions),
+    correctionRoutes: createCorrectionRoutes(db, identity, routeOptions),
+    staffRoutes: createStaffRoutes(db, courses, identity, routeOptions),
+    operationsRoutes: createOperationsRoutes(db, files, identity, routeOptions),
     homepageRoutes: createHomepageRoutes(createHomepageStore(db), identity, routeOptions),
     trustedProxies: settings.auth.trustedProxies,
     // The loader reports a synthetic loopback address to Express even on its Unix socket.

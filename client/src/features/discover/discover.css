@@ -60,3 +60,8 @@
   .discover-hero__art img { object-position: 58% center; }
   .discover-start { font-size: .86rem; padding-inline: .75rem; }
 }
+.home-page {
+  color: var(--ink);
+  min-block-size: calc(100vh - var(--shell-header-height, 72px));
+  min-block-size: calc(100svh - var(--shell-header-height, 72px));
+}

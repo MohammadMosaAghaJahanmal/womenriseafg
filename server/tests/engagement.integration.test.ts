@@ -16,13 +16,16 @@ import { createAuthRoutes } from '../src/modules/auth/routes';
 import { migrateBooks } from '../src/modules/books/migration';
 import { migrateCertificates } from '../src/modules/certificates/migration';
 import { createCertificateRoutes } from '../src/modules/certificates/routes';
+import { createCertificateManagementRoutes, migrateCertificateManagement } from '../src/modules/certificates/management';
 import type { CourseInput } from '../src/modules/courses/contract';
 import { migrateCourses } from '../src/modules/courses/migration';
+import { migrateCurriculumAuthoring } from '../src/modules/courses/authoringMigration';
+import { fixtureCredit } from './fixtures/curriculum';
 import { createCourseStore } from '../src/modules/courses/store';
 import type { EditorialPath, SearchEntry } from '../src/modules/discovery/contract';
-import { migrateDiscovery } from '../src/modules/discovery/migration';
+import { migrateCollections, migrateDiscovery } from '../src/modules/discovery/migration';
 import { createDiscoveryRoutes } from '../src/modules/discovery/routes';
-import { createDiscoveryStore } from '../src/modules/discovery/store';
+import { createCollectionStore, createDiscoveryStore } from '../src/modules/discovery/store';
 import { migrateEducation } from '../src/modules/education/migration';
 import { migrateLearningMedia } from '../src/modules/learning-media/migration';
 import { migrateMedia } from '../src/modules/media/migration';
@@ -49,7 +52,9 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
   const server = createServer(createApp({
     logger, production: true, trustedProxies: ['127.0.0.1'], checkDatabase: () => db.authenticate(),
     identityRoutes: createAuthRoutes(identity, options), quizRoutes: createQuizRoutes(createQuizStore(db), identity, options),
-    discoveryRoutes: createDiscoveryRoutes(discovery, identity, options), certificateRoutes: createCertificateRoutes(db, courses, options),
+    discoveryRoutes: createDiscoveryRoutes(discovery, identity, options, createCollectionStore(db)),
+    certificateRoutes: createCertificateRoutes(db, courses, { ...options, managed: true }),
+    certificateManagementRoutes: createCertificateManagementRoutes(db, identity, options),
   }));
   const token = randomBytes(5).toString('hex');
   const editorRole = 'stage9-editor-' + token;
@@ -59,6 +64,7 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
   const courseSlug = 'course-' + token;
   const quizSlug = 'quiz-' + token;
   const pathSlug = 'path-' + token;
+  const collectionSlug = 'collection-' + token;
   const createdQuestions: string[] = [];
   let originalDaily: Awaited<ReturnType<typeof discovery.dailySettings>> | undefined;
   let migrated = false;
@@ -66,7 +72,8 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
     for (const migrate of [migrateIdentity, migrateEducation, migrateMedia, migrateCourses, migrateLearningMedia, migrateBooks]) {
       await migrate(db);
     }
-    for (const migrate of [migrateQuizzes, migrateDiscovery, migrateCertificates]) {
+    for (const migrate of [migrateQuizzes, migrateCurriculumAuthoring, migrateDiscovery, migrateCertificates,
+      migrateCollections, migrateCertificateManagement]) {
       await migrate(db);
       assert.equal(await migrate(db), false);
     }
@@ -89,7 +96,7 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
     const localized = [{ locale: 'en', title }, { locale: 'fa-AF', title: dari }, { locale: 'ps', title: pashto }];
     const courseInput: CourseInput = {
       slug: courseSlug, subjectId: subject.id, levelId: null, gradeId: null, thumbnailId: null, estimatedMinutes: null,
-      instructor: '', tagIds: [], relatedCourseIds: [],
+      instructor: '', tagIds: [], relatedCourseIds: [], provenance: fixtureCredit,
       translations: localized.map(copy => ({ ...copy, description: 'Review these skills.', objectives: '', prerequisites: '' })),
       chapters: [{ translations: localized, lessons: ['first', 'second'].map(slug => ({
         slug, kind: 'text', mediaId: null, resources: [],
@@ -132,7 +139,7 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
     const questions: QuestionRecord[] = [];
     for (const [index, kind] of ['single-choice', 'multiple-choice', 'true-false', 'short-answer'].entries()) {
       const short = kind === 'short-answer';
-      const question = { kind, correctOptions: short ? [] : kind === 'multiple-choice' ? [0, 2] : [0],
+      const question = { kind, provenance: fixtureCredit, correctOptions: short ? [] : kind === 'multiple-choice' ? [0, 2] : [0],
         translations: localized.map(copy => ({
           locale: copy.locale, prompt: copy.title + ' ' + index, options: short ? [] : kind === 'multiple-choice' ? ['A', 'B', 'C'] : ['A', 'B'],
           acceptedAnswers: short ? [copy.locale === 'en' ? 'a plant' : 'گیاه'] : [], explanation: 'Use the practice guide.',
@@ -141,7 +148,7 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
       createdQuestions.push(item.id);
       questions.push(item);
     }
-    const quizInput = { slug: quizSlug, courseId: course.id, passingScore: 75,
+    const quizInput = { slug: quizSlug, courseId: course.id, passingScore: 75, provenance: fixtureCredit,
       questionIds: questions.map(item => item.id), translations: localized.map(copy => ({ ...copy, description: 'Practice questions' })) };
     let { item: quiz } = await json<{ item: QuizRecord }>(await request('/admin/quizzes', 'POST', quizInput, editor), 201);
     await json(await request('/quizzes/' + quizSlug), 404);
@@ -228,6 +235,20 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
     assert.ok(path.item.activities.every(activity => activity.locale === 'fa-AF'));
     assert.ok((await json<Matches>(await request('/learning-paths?subjectId=' + subject.id))).items.some(item => item.id === learningPath.id));
 
+    const groupAdmin = '/admin/discovery/collections';
+    const groupPublic = '/collections/' + collectionSlug;
+    const groupInput = { ...pathInput, slug: collectionSlug, activities: [{ kind: 'course', id: course.id }] };
+    await json(await request(groupAdmin, 'POST', { ...groupInput, activities }, admin), 422);
+    let { item: collection } = await json<{ item: EditorialPath }>(await request(groupAdmin, 'POST', groupInput, admin), 201);
+    await json(await request(groupPublic), 404);
+    for (const status of ['educational-review', 'approved', 'published']) {
+      ({ item: collection } = await json<{ item: EditorialPath }>(await request(groupAdmin + '/' + collection.id + '/status',
+        'PATCH', { status, version: collection.version }, admin)));
+    }
+    const collectionDetails = await json<{ item: { activities: SearchEntry[] } }>(await request(groupPublic + '?language=ps'));
+    assert.deepEqual(collectionDetails.item.activities.map(item => item.id), [course.id]);
+    await json(await request('/learning-paths/' + collectionSlug), 404);
+
     originalDaily = await discovery.dailySettings();
     const daily = '/admin/discovery/daily-learning';
     const setting = { version: originalDaily.version, mode: 'curated', activities: [activities[0]] };
@@ -254,6 +275,12 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
     const verified = await json<CertificateEnvelope>(await request(certificates + '/' + published.certificate.code));
     assert.equal(verified.certificate.courseTitle, dari);
     assert.deepEqual(Object.keys(verified.certificate).sort(), ['code', 'courseSlug', 'courseTitle', 'issuedAt', 'locale', 'publicVerification']);
+    const verificationAdmin = '/admin/certificates/' + published.certificate.code;
+    await json(await request(verificationAdmin, 'PATCH', { withdrawn: true }, editor), 403);
+    await json(await request(verificationAdmin, 'PATCH', { withdrawn: true }, admin));
+    await json(await request(certificates + '/' + published.certificate.code), 404);
+    await json(await request(verificationAdmin, 'PATCH', { withdrawn: false }, admin));
+    await json(await request(certificates + '/' + published.certificate.code));
     await json(await request(certificates), 404);
 
     course = await courses.changeStatus(course.id, 'archived', course.version);
@@ -270,6 +297,7 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
         if (originalDaily) await db.query('UPDATE daily_learning_settings SET mode = $mode, activities = $activities, version = $version WHERE id = 1',
           { bind: { ...originalDaily, activities: JSON.stringify(originalDaily.activities) } });
         await db.query('DELETE FROM learning_paths WHERE slug=$slug', { bind: { slug: pathSlug } });
+        await db.query('DELETE FROM course_collections WHERE slug=$slug', { bind: { slug: collectionSlug } });
         await db.query('DELETE FROM quizzes WHERE slug=$slug', { bind: { slug: quizSlug } });
         for (const id of createdQuestions) await db.query('DELETE FROM quiz_questions WHERE id=$id', { bind: { id } });
         await db.query('DELETE FROM courses WHERE slug=$slug', { bind: { slug: courseSlug } });

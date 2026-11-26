@@ -67,6 +67,7 @@
 .learn-card h3 a::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius); }
 .learn-card h3 a:focus-visible { outline: 0; }
 .learn-card h3 a:focus-visible::after { outline: 3px solid var(--focus); outline-offset: 3px; }
+.learn-card .learn-actions { position: relative; z-index: 1; }
 .learn-card-tags, .learn-card-facts, .learn-languages { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; }
 .learn-card-tags span, .learn-languages li {
   border-radius: 1.5rem; padding: .17rem .58rem; font-size: .8rem; font-weight: 660; line-height: 1.5;
@@ -76,7 +77,6 @@
 .learn-card-facts { gap: .4rem .8rem; font-size: .84rem; color: var(--muted); }
 .learn-languages { margin: 0; padding: 0; list-style: none; }
 .learn-languages li { color: var(--muted); background: var(--surface-alt); border: 1px solid var(--line); }
-.learn-card-cta { display: flex; align-items: center; gap: .45rem; color: var(--primary); font-size: .93rem; font-weight: 700; }
 
 .learn-back { display: inline-flex; align-items: center; gap: .45rem; width: fit-content; max-width: 100%; min-block-size: 44px; color: var(--primary); font-size: .93rem; font-weight: 650; }
 .learn-back:hover { text-decoration: underline; }

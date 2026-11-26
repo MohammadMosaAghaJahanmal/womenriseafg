@@ -32,6 +32,7 @@ const properties = {
     locale: locale.required(),
     title: Joi.string().trim().min(1).max(150).required(),
     description: text(1000),
+    imageAlt: text(500).allow(null),
   })).min(1).max(6).unique('locale').required(),
 };
 

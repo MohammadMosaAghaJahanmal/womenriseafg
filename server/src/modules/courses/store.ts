@@ -4,8 +4,10 @@ import { transitionAllowed, type EducationKind, type EducationStatus } from '../
 import { defineEducationModels, normalizeEducationSearch } from '../education/models';
 import { defineMediaModels } from '../media/models';
 import type { MediaKind } from '../media/contract';
+import { publishedQuizLocale, standaloneQuiz } from '../quizzes/visibility';
 import { CourseError, type ChapterRecord, type CourseInput, type CourseStatus } from './contract';
 import { defineCourseModels } from './models';
+import { completeProvenance, emptyProvenance } from './provenance';
 import { courseReader } from './reader';
 
 const editable: readonly CourseStatus[] = ['draft', 'educational-review', 'translation-review'];
@@ -32,6 +34,8 @@ export function createCourseStore(db: Sequelize) {
   const { Entry } = defineEducationModels(db);
   const { Asset, Reference } = defineMediaModels(db);
   const reader = courseReader(db, models);
+  const withTransaction = <T>(transaction: Transaction | undefined, work: (current: Transaction) => Promise<T>) =>
+    transaction ? work(transaction) : db.transaction(work);
 
   async function requireVersion(id: string, version: number, transaction: Transaction) {
     const course = await Course.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
@@ -85,12 +89,16 @@ export function createCourseStore(db: Sequelize) {
   async function checkMedia(input: CourseInput, transaction: Transaction, publishing = false) {
     const references: [string, MediaKind | null][] = input.thumbnailId ? [[input.thumbnailId, 'image']] : [];
     for (const lesson of input.chapters.flatMap(chapter => chapter.lessons)) {
-      if (lesson.kind === 'text' && lesson.mediaId) throw new CourseError('INVALID_REFERENCE');
+      for (const { mediaId } of lesson.resources) references.push([mediaId, null]);
+      if (lesson.kind === 'quiz') {
+        if (lesson.mediaId) throw new CourseError('INVALID_REFERENCE');
+        continue;
+      }
+      if (lesson.quizId || (lesson.kind === 'text' && lesson.mediaId)) throw new CourseError('INVALID_REFERENCE');
       if (lesson.kind !== 'text') {
         if (lesson.mediaId) references.push([lesson.mediaId, lesson.kind]);
         else if (publishing) throw new CourseError('INCOMPLETE_COURSE');
       }
-      for (const { mediaId } of lesson.resources) references.push([mediaId, null]);
     }
     const ids = [...new Set(references.map(([id]) => id))];
     if (!ids.length) return ids;
@@ -107,6 +115,18 @@ export function createCourseStore(db: Sequelize) {
       }
     }
     return ids;
+  }
+
+  async function checkQuizzes(input: CourseInput, transaction: Transaction, publishing = false) {
+    const lessons = input.chapters.flatMap(chapter => chapter.lessons).filter(lesson => lesson.kind === 'quiz');
+    if (publishing && lessons.some(lesson => !lesson.quizId)) throw new CourseError('INCOMPLETE_COURSE');
+    const ids = [...new Set(lessons.flatMap(lesson => lesson.quizId ? [lesson.quizId] : []))];
+    if (!ids.length) return;
+    const rows = await db.query<{ id: string }>(`
+      SELECT z.id FROM quizzes z WHERE z.id IN (:ids)
+      AND ${publishing ? standaloneQuiz : "z.course_id IS NULL AND z.status <> 'archived'"} ORDER BY z.id FOR SHARE
+    `, { replacements: { ids }, type: QueryTypes.SELECT, transaction });
+    if (rows.length !== ids.length) throw new CourseError('INVALID_REFERENCE');
   }
 
   async function syncReferences(courseId: string, ids: string[], transaction: Transaction, published = false) {
@@ -148,10 +168,10 @@ export function createCourseStore(db: Sequelize) {
     }
     const chapterRows = chapters.map(({ id }, position) => ({ id, courseId, position }));
     if (chapterRows.length) await Chapter.bulkCreate(chapterRows, { updateOnDuplicate: ['position'], transaction });
-    const lessonRows = chapters.flatMap(chapter => chapter.lessons.map(({ id, slug, kind, mediaId }, position) =>
-      ({ id, courseId, chapterId: chapter.id, slug, kind, mediaId, position })));
+    const lessonRows = chapters.flatMap(chapter => chapter.lessons.map(({ id, slug, kind, mediaId, quizId }, position) =>
+      ({ id, courseId, chapterId: chapter.id, slug, kind, mediaId, quizId: quizId ?? null, position })));
     if (lessonRows.length) await Lesson.bulkCreate(lessonRows, {
-      updateOnDuplicate: ['slug', 'kind', 'mediaId', 'chapterId', 'position'], transaction,
+      updateOnDuplicate: ['slug', 'kind', 'mediaId', 'quizId', 'chapterId', 'position'], transaction,
     });
     const unusedChapters = [...chapterIds].filter(id => !suppliedChapters.includes(id));
     if (unusedChapters.length) await Chapter.destroy({ where: { id: unusedChapters }, transaction });
@@ -170,7 +190,7 @@ export function createCourseStore(db: Sequelize) {
       const where = { lessonId: lessonRows.map(lesson => lesson.id) };
       await LessonTranslation.destroy({ where, transaction });
       await LessonTranslation.bulkCreate(nextLessons.flatMap(lesson =>
-        lesson.translations.map(translation => ({ ...translation, lessonId: lesson.id }))), { transaction });
+        lesson.translations.map(translation => ({ ...translation, imageAlt: translation.imageAlt ?? '', lessonId: lesson.id }))), { transaction });
       await LessonResource.destroy({ where, transaction });
       await LessonResource.bulkCreate(nextLessons.flatMap(lesson => lesson.resources.map((resource, position) =>
         ({ ...resource, lessonId: lesson.id, position }))), { transaction });
@@ -189,21 +209,46 @@ export function createCourseStore(db: Sequelize) {
     }
     for (const chapter of input.chapters) {
       if (!chapter.translations.some(inPublicLanguage) || chapter.lessons.some(lesson =>
-        !lesson.translations.some(translation => inPublicLanguage(translation) && (lesson.kind !== 'text' || translation.body.trim())))) {
+        !lesson.translations.some(translation => inPublicLanguage(translation) &&
+          (lesson.kind !== 'text' || translation.body.trim()) && (lesson.kind !== 'image' || translation.imageAlt?.trim())))) {
         throw new CourseError('INCOMPLETE_COURSE');
       }
     }
     await validateTaxonomy(input, transaction, true);
+    await checkQuizzes(input, transaction, true);
     return checkMedia(input, transaction, true);
+  }
+
+  function checkProvenance(input: CourseInput) {
+    const translations = [
+      ...input.translations,
+      ...input.chapters.flatMap(chapter => chapter.lessons.flatMap(lesson => lesson.translations)),
+    ];
+    if (!completeProvenance(input.provenance) || translations.some(item => item.provenance && !completeProvenance(item.provenance))) {
+      throw new CourseError('INCOMPLETE_PROVENANCE');
+    }
   }
 
   return {
     list: reader.list,
     findPublic: reader.findPublic,
     findPublicRelated: reader.findPublicRelated,
+    async lessonQuizSlug(id: string) {
+      const [row] = await db.query<{ slug: string }>(`
+        SELECT z.slug FROM quizzes z WHERE z.id = :id AND ${standaloneQuiz}
+      `, { replacements: { id }, type: QueryTypes.SELECT });
+      return row?.slug ?? null;
+    },
+    lessonQuizTitles(id: string) {
+      return db.query<{ title: string; locale: string }>(`
+        SELECT qt.title, qt.locale FROM quizzes z JOIN quiz_translations qt ON z.id = qt.quiz_id
+        WHERE z.id = :id AND ${standaloneQuiz} AND ${publishedQuizLocale('qt.locale')}
+        ORDER BY qt.locale
+      `, { replacements: { id }, type: QueryTypes.SELECT });
+    },
 
-    get(id: string) {
-      return db.transaction(async transaction => {
+    get(id: string, existingTransaction?: Transaction) {
+      return withTransaction(existingTransaction, async transaction => {
         const course = await Course.findByPk(id, { transaction });
         if (!course) throw new CourseError('NOT_FOUND');
         return reader.record(course.get(), transaction);
@@ -219,7 +264,8 @@ export function createCourseStore(db: Sequelize) {
           await validateTaxonomy(input, transaction);
           await validateRelated(id, input.relatedCourseIds, transaction);
           const ids = await checkMedia(input, transaction);
-          const course = await Course.create({ ...courseFields(input), id, status: 'draft', version: 1,
+          await checkQuizzes(input, transaction);
+          const course = await Course.create({ ...courseFields(input), provenance: input.provenance ?? emptyProvenance, id, status: 'draft', version: 1,
             creatorId: actorId, createdAt: now, updatedAt: now }, { transaction });
           await writeContent(id, input, transaction);
           await syncReferences(id, ids, transaction);
@@ -230,16 +276,18 @@ export function createCourseStore(db: Sequelize) {
       }
     },
 
-    async update(id: string, input: CourseInput, version: number) {
+    async update(id: string, input: CourseInput, version: number, existingTransaction?: Transaction) {
       try {
-        return await db.transaction(async transaction => {
+        return await withTransaction(existingTransaction, async transaction => {
           const course = await requireVersion(id, version, transaction);
           if (!editable.includes(course.getDataValue('status'))) throw new CourseError('INVALID_TRANSITION');
           await localesFor(input, transaction);
           await validateTaxonomy(input, transaction);
           await validateRelated(id, input.relatedCourseIds, transaction);
           const ids = await checkMedia(input, transaction);
-          await course.update({ ...courseFields(input), version: version + 1, updatedAt: new Date() }, { transaction });
+          await checkQuizzes(input, transaction);
+          await course.update({ ...courseFields(input), provenance: input.provenance ?? course.getDataValue('provenance'),
+            version: version + 1, updatedAt: new Date() }, { transaction });
           await writeContent(id, input, transaction);
           await syncReferences(id, ids, transaction);
           return reader.record(course.get(), transaction);
@@ -249,15 +297,18 @@ export function createCourseStore(db: Sequelize) {
       }
     },
 
-    changeStatus(id: string, status: CourseStatus, version: number) {
-      return db.transaction(async transaction => {
+    changeStatus(id: string, status: CourseStatus, version: number, existingTransaction?: Transaction) {
+      return withTransaction(existingTransaction, async transaction => {
         const course = await requireVersion(id, version, transaction);
         const current = course.getDataValue('status');
         if (!transitionAllowed(current, status)) throw new CourseError('INVALID_TRANSITION');
-        if (status === 'published') {
+        if (status === 'approved' || status === 'published') {
           const input = await reader.record(course.get(), transaction);
-          const ids = await validatePublication(input, transaction);
-          await syncReferences(id, ids, transaction, true);
+          checkProvenance(input);
+          if (status === 'published') {
+            const ids = await validatePublication(input, transaction);
+            await syncReferences(id, ids, transaction, true);
+          }
         }
         if (current === 'published') {
           await Reference.update({ published: false }, { where: { ownerType: 'course', ownerId: id }, transaction });

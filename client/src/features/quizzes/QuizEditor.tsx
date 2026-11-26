@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Card, InputField, SectionTabs, StatePanel } from '../../components/ui/Primitives';
 import { readIdentity } from '../auth/api';
 import { TextArea, TranslationFields } from '../courses/admin/EditorFields';
+import { blankProvenance, RightsFields } from '../courses/Provenance';
 import { findCourse, listCourses, type CourseSummary } from '../courses/student/api';
 import { chooseTranslation } from '../courses/student/components';
 import { canDelete, canEdit, statusTransitions, type EducationRecord, type Status } from '../education/api';
@@ -25,9 +26,10 @@ const blank = (locale: string): QuizTranslation => ({ locale, title: '', descrip
 
 type QuizDraft = Omit<QuizInput, 'passingScore'> & { passingScore: string };
 function fromRecord(locale: string, record?: AdminQuiz): QuizDraft {
-  if (!record) return { slug: '', passingScore: '70', courseId: null, questionIds: [], translations: [blank(locale)] };
-  const { slug, passingScore, courseId, questionIds, translations } = record;
-  return { slug, passingScore: String(passingScore), courseId, questionIds, translations };
+  if (!record) return { slug: '', passingScore: '70', courseId: null, questionIds: [],
+    translations: [blank(locale)], provenance: { ...blankProvenance } };
+  const { slug, passingScore, courseId, questionIds, translations, provenance } = record;
+  return { slug, passingScore: String(passingScore), courseId, questionIds, translations, provenance };
 }
 
 function Review({ entry, canPublish, locked, dirty, onStatus, onDelete }: {
@@ -193,6 +195,7 @@ function QuizForm({ data, reload }: { data: EditorData; reload: () => void }) {
           onChange={event => change({ passingScore: event.target.value })} />
       </div>
       <p className="course-note">{t('codeHint')}</p>
+      <RightsFields value={draft.provenance} onChange={provenance => change({ provenance })} disabled={locked} />
       <div className="course-choice">
         <h2>{t('course')}</h2>
         {draft.courseId ? <p><bdi lang={course?.locale}>{course?.title ?? t('unavailableReference')}</bdi></p> :
@@ -210,8 +213,11 @@ function QuizForm({ data, reload }: { data: EditorData; reload: () => void }) {
       <legend>{t('contentLanguages')}</legend>
       <TranslationFields records={data.languages} values={draft.translations} onChange={translations => change({ translations })}
         blank={blank} titleLabel={t('name')} disabled={locked}
-        render={(value, direction, update) => <TextArea label={t('description')} value={value.description}
-          onChange={description => update({ description })} locale={value.locale} direction={direction} maxLength={500} />} />
+        render={(value, direction, update) => <>
+          <TextArea label={t('description')} value={value.description}
+            onChange={description => update({ description })} locale={value.locale} direction={direction} maxLength={500} />
+          <RightsFields value={value.provenance} onChange={provenance => update({ provenance })} optional disabled={locked} />
+        </>} />
     </fieldset>
   </div>;
 

@@ -8,12 +8,13 @@ interface Preferences {
   setLanguage: (value: Language) => void;
   theme: Theme;
   setTheme: (value: Theme) => void;
+  setDefaultTheme: (value: Theme) => void;
   clearPreferences: () => boolean;
 }
 const Context = createContext<Preferences | null>(null);
 const scheme = window.matchMedia('(prefers-color-scheme: dark)');
 const stored = savedPreference('theme');
-const initialTheme = stored === 'light' || stored === 'dark' ? stored : 'system';
+const chosenTheme = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : null;
 
 function applyTheme(value: Theme) {
   document.documentElement.dataset.theme = value === 'system' ? (scheme.matches ? 'dark' : 'light') : value;
@@ -23,11 +24,13 @@ function remember(key: 'language' | 'theme', value: string) {
   try { localStorage.setItem('womenriseafg.' + key, value); }
   catch { /* Preferences continue working in memory when storage is unavailable. */ }
 }
-applyTheme(initialTheme);
+applyTheme(chosenTheme ?? 'system');
 
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const { i18n: translations } = useTranslation();
-  const [theme, updateTheme] = useState<Theme>(initialTheme);
+  const [chosen, updateTheme] = useState<Theme | null>(chosenTheme);
+  const [defaultTheme, setDefaultTheme] = useState<Theme>('system');
+  const theme = chosen ?? defaultTheme;
   useEffect(() => {
     const sync = () => applyTheme(theme);
     sync();
@@ -50,12 +53,12 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('womenriseafg.language');
       localStorage.removeItem('womenriseafg.theme');
     } catch { removed = false; }
-    updateTheme('system');
-    applyTheme('system');
+    updateTheme(null);
+    applyTheme(defaultTheme);
     void i18n.changeLanguage(browserLanguage());
     return removed;
   }
-  return <Context.Provider value={{ theme, setTheme, language: translations.language as Language, setLanguage, clearPreferences }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ theme, setTheme, setDefaultTheme, language: translations.language as Language, setLanguage, clearPreferences }}>{children}</Context.Provider>;
 }
 export function usePreferences() {
   const value = useContext(Context);

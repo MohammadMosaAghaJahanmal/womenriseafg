@@ -7,6 +7,7 @@ import { localeName, type EducationRecord } from '../../education/api';
 import { AssetSelection, RelatedSelection, taxonomyName } from './Choices';
 import { type ChapterTranslation, type CourseTaxonomy } from './api';
 import { emptyCourseTranslation, type CourseDraft } from './draft';
+import { RightsFields } from '../Provenance';
 
 export function contentLanguageName(locale: string, interfaceLanguage: string) {
   return languageNames[locale as Language] ?? localeName(locale, interfaceLanguage);
@@ -145,6 +146,7 @@ export function DetailsFields({ draft, taxonomy, courseId, disabled, change }: D
         onChange={id => change('thumbnailId', id)} />
       <TagsField values={taxonomy.tags} selected={draft.tagIds} change={ids => change('tagIds', ids)} disabled={disabled} />
       <RelatedSelection courseId={courseId} values={draft.relatedCourseIds} onChange={ids => change('relatedCourseIds', ids)} disabled={disabled} />
+      <RightsFields value={draft.provenance} onChange={value => change('provenance', value)} disabled={disabled} />
     </fieldset>
     <fieldset className="course-form-card" disabled={disabled}>
       <legend>{t('translation')}</legend>
@@ -153,6 +155,7 @@ export function DetailsFields({ draft, taxonomy, courseId, disabled, change }: D
           <TextArea label={t('description')} value={translation.description} onChange={description => patch({ description })} locale={translation.locale} direction={direction} />
           <TextArea label={t('objectives')} value={translation.objectives} onChange={objectives => patch({ objectives })} locale={translation.locale} direction={direction} />
           <TextArea label={t('prerequisites')} value={translation.prerequisites} onChange={prerequisites => patch({ prerequisites })} locale={translation.locale} direction={direction} />
+          <RightsFields value={translation.provenance} onChange={provenance => patch({ provenance })} optional disabled={disabled} />
         </>} />
     </fieldset>
   </div>;

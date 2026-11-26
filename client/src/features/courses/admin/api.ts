@@ -2,9 +2,10 @@ import axios from 'axios';
 import { authError, authStatus } from '../../auth/api';
 import type { EducationRecord, Status } from '../../education/api';
 import type { MediaKind, MediaRecord } from '../../media/api';
+import type { ContentProvenance } from '../Provenance';
 
 export const courseAdminPath = '/admin/courses';
-export const lessonKinds = ['text', 'video', 'audio', 'pdf'] as const;
+export const lessonKinds = ['text', 'video', 'audio', 'pdf', 'image', 'quiz'] as const;
 export type LessonKind = typeof lessonKinds[number];
 
 export interface ChapterTranslation { locale: string; title: string }
@@ -12,14 +13,18 @@ export interface CourseTranslation extends ChapterTranslation {
   description: string;
   objectives: string;
   prerequisites: string;
+  provenance?: ContentProvenance | null;
 }
-export interface LessonTranslation extends ChapterTranslation { description: string; body: string }
+export interface LessonTranslation extends ChapterTranslation {
+  description: string; body: string; imageAlt?: string; provenance?: ContentProvenance | null;
+}
 export interface LessonResource { mediaId: string; label: string }
 export interface LessonInput {
   id?: string;
   slug: string;
   kind: LessonKind;
   mediaId: string | null;
+  quizId?: string | null;
   translations: LessonTranslation[];
   resources: LessonResource[];
 }
@@ -32,6 +37,7 @@ export interface CourseInput {
   thumbnailId: string | null;
   estimatedMinutes: number | null;
   instructor: string;
+  provenance?: ContentProvenance | null;
   tagIds: string[];
   relatedCourseIds: string[];
   translations: CourseTranslation[];
@@ -71,6 +77,11 @@ export async function listCourseAssets(params: { q?: string; kind?: MediaKind; p
 export async function getCourseAsset(id: string, signal: AbortSignal) {
   const { data } = await service.get<{ item: CourseAsset | null }>(base + '/assets/' + id, { signal });
   return data.item;
+}
+
+export async function getLessonQuizTitles(id: string, signal: AbortSignal) {
+  const { data } = await service.get<{ titles: ChapterTranslation[] }>(base + '/quiz-options/' + id, { signal });
+  return data.titles;
 }
 
 export async function getCourse(id: string, signal: AbortSignal) {
@@ -122,6 +133,7 @@ export function courseError(error: unknown, fallback = 'error') {
     case 'INVALID_REFERENCE': return 'invalidReference';
     case 'INVALID_TRANSITION': return 'invalidTransition';
     case 'INCOMPLETE_COURSE': return 'incomplete';
+    case 'INCOMPLETE_PROVENANCE': return 'incompleteProvenance';
     case 'RESOURCE_DOWNLOAD_FORBIDDEN': return 'resourceDownloadForbidden';
     default: return fallback;
   }

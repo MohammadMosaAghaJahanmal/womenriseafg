@@ -1,16 +1,21 @@
 import { useState, type ReactNode } from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, FileText, Headphones, Layers3, Play, Video } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, ClipboardCheck, FileText, Headphones, Image, Layers3, Play, Video } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import { Button, SelectField, StatePanel } from '../../../components/ui/Primitives';
 import { languageNames, type Language } from '../../../i18n';
 import { useDataSaving } from '../../data-saving/preferences';
 import { preferredName, type EducationRecord } from '../../education/api';
+import { useLearning } from '../../engagement/local';
+import { SaveResource } from '../../engagement/SaveResource';
+import { learningNamespace } from '../../engagement/strings';
 import { fileUrl, isMissing, type CourseSummary, type LessonKind, type PublicCourse } from './api';
 import { courseNamespace } from './strings';
 import './student-courses.css';
 
-export const lessonIcons = { text: FileText, video: Video, audio: Headphones, pdf: FileText } satisfies Record<LessonKind, typeof FileText>;
+export const lessonIcons = {
+  text: FileText, video: Video, audio: Headphones, pdf: FileText, image: Image, quiz: ClipboardCheck,
+} satisfies Record<LessonKind, typeof FileText>;
 
 export function chooseTranslation<T extends { locale: string }>(translations: T[], preferred: string): T {
   return translations.find(item => item.locale === preferred) ?? translations.find(item => item.locale === 'en') ?? translations[0]!;
@@ -128,10 +133,15 @@ export function FactName({ records, id }: { records: EducationRecord[]; id: stri
 export function CourseCard({ course, language, subjects, levels }: {
   course: CourseSummary; language?: string; subjects: EducationRecord[]; levels: EducationRecord[];
 }) {
-  const { t, i18n } = useTranslation(courseNamespace);
+  const { t, i18n } = useTranslation([courseNamespace, learningNamespace]);
+  const { enabled, completedCourses, completedLessons, recent } = useLearning();
   const translation = chooseTranslation(course.translations, language ?? i18n.language);
   const subject = subjects.some(record => record.id === course.subjectId);
   const level = levels.some(record => record.id === course.levelId);
+  const complete = enabled && completedCourses.includes(course.id);
+  const last = enabled && !complete ? recent.find(({ resource }) => resource.kind === 'lesson' &&
+    resource.parentSlug === course.slug && !completedLessons.includes(resource.id)) : undefined;
+  const open = last ? lessonPath(course.slug, last.resource.slug, language) : coursePath(course.slug, language);
   return <article className="learn-card">
     <CourseCover id={course.thumbnailId} />
     <div className="learn-card-body">
@@ -147,7 +157,12 @@ export function CourseCard({ course, language, subjects, levels }: {
         {course.estimatedMinutes != null && <span>{t('minutes', { number: localizedNumber(course.estimatedMinutes, i18n.language) })}</span>}
       </div>
       <AvailableLanguages locales={course.translations.map(item => item.locale)} />
-      <div className="learn-card-cta" aria-hidden="true">{t('viewCourse')} <ArrowRight size={16} className="ui-direction" /></div>
+      {complete && <p className="learn-card-facts">{t('engagement:complete')}</p>}
+      <div className="learn-actions">
+        <Button asChild variant="ghost"><Link to={open}>{t(last ? 'engagement:continue' : 'viewCourse')}
+          <ArrowRight size={16} className="ui-direction" aria-hidden="true" /></Link></Button>
+        <SaveResource resource={{ kind: 'course', id: course.id, slug: course.slug, title: translation.title, locale: translation.locale }} />
+      </div>
     </div>
   </article>;
 }

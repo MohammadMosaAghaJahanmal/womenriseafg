@@ -3,7 +3,10 @@ import { Route, Routes, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import StudentLayout from './layouts/StudentLayout';
 import { useBranding } from './features/homepage/Branding';
+import { HomeHero } from './features/homepage/HomeHero';
 import { sectionLabel } from './pages/routes';
+import { Button } from './components/ui/Primitives';
+import { PageLoadBoundary } from './pages/PageLoadBoundary';
 import './pages/strings';
 import './features/auth/strings';
 
@@ -33,6 +36,9 @@ const QuizCatalog = lazy(() => import('./features/quizzes/Student').then(module 
 const QuizDetail = lazy(() => import('./features/quizzes/Student').then(module => ({ default: module.QuizDetail })));
 const DiscoveryCatalog = lazy(() => import('./features/discovery/PublicDiscovery').then(module => ({ default: module.DiscoveryCatalog })));
 const LearningPath = lazy(() => import('./features/discovery/PublicDiscovery').then(module => ({ default: module.LearningPath })));
+const StaffWorkspace = lazy(() => import('./features/staff/StaffPages').then(module => ({ default: module.StaffWorkspace })));
+const PrivacyPage = lazy(() => import('./features/privacy/PrivacyPage'));
+const CorrectionPage = lazy(() => import('./features/privacy/CorrectionPage'));
 
 export default function App() {
   const { pathname } = useLocation();
@@ -51,11 +57,16 @@ export default function App() {
   }, [pathname, t, branding.name]);
 
   const loading = <p className="p-6" role="status">{t('pages:loading')}</p>;
-  return <Routes>
+  const homeLoading = <div className="discover-page home-page"><HomeHero branding={branding} />{loading}</div>;
+  const loadError = <main className="p-6">
+    <div role="alert"><h1>{t('pages:pageLoadFailed')}</h1></div>
+    <Button onClick={() => window.location.reload()}>{t('pages:retry')}</Button>
+  </main>;
+  return <PageLoadBoundary route={pathname} fallback={loadError}><Routes>
     <Route path="design-preview" element={<Suspense fallback={loading}><ComponentPreviewPage /></Suspense>} />
     <Route path="admin/*" element={<Suspense fallback={loading}><AdminGate><AdminPage /></AdminGate></Suspense>} />
     <Route element={<StudentLayout />}>
-      <Route index element={<Suspense fallback={loading}><HomePage /></Suspense>} />
+      <Route index element={<Suspense fallback={homeLoading}><HomePage /></Suspense>} />
       <Route path="explore" element={<Suspense fallback={loading}><ExplorePage /></Suspense>} />
       <Route path="courses" element={<Suspense fallback={loading}><CourseCatalog /></Suspense>} />
       <Route path="courses/:slug" element={<Suspense fallback={loading}><CourseDetails /></Suspense>} />
@@ -67,9 +78,14 @@ export default function App() {
       <Route path="quizzes" element={<Suspense fallback={loading}><QuizCatalog /></Suspense>} />
       <Route path="quizzes/:slug" element={<Suspense fallback={loading}><QuizDetail /></Suspense>} />
       <Route path="search" element={<Suspense fallback={loading}><DiscoveryCatalog /></Suspense>} />
-      <Route path="learning-paths" element={<Suspense fallback={loading}><DiscoveryCatalog paths /></Suspense>} />
+      <Route path="learning-paths" element={<Suspense fallback={loading}><DiscoveryCatalog group="paths" /></Suspense>} />
       <Route path="learning-paths/:slug" element={<Suspense fallback={loading}><LearningPath /></Suspense>} />
+      <Route path="collections" element={<Suspense fallback={loading}><DiscoveryCatalog group="collections" /></Suspense>} />
+      <Route path="collections/:slug" element={<Suspense fallback={loading}><LearningPath group="collections" /></Suspense>} />
       <Route path="daily-learning" element={<Suspense fallback={loading}><DailyLearning /></Suspense>} />
+      <Route path="staff" element={<Suspense fallback={loading}><StaffWorkspace /></Suspense>} />
+      <Route path="privacy" element={<Suspense fallback={loading}><PrivacyPage /></Suspense>} />
+      <Route path="report-correction" element={<Suspense fallback={loading}><CorrectionPage /></Suspense>} />
       <Route path="learn/:courseSlug/:lessonSlug" element={<Suspense fallback={loading}><LessonPage /></Suspense>} />
       <Route path="videos" element={<Suspense fallback={loading}><LearningMediaCatalog collection="videos" /></Suspense>} />
       <Route path="videos/:slug" element={<Suspense fallback={loading}><LearningMediaDetail collection="videos" /></Suspense>} />
@@ -86,5 +102,5 @@ export default function App() {
       <Route path="admin/login" element={<Suspense fallback={loading}><LoginPage mode="admin-login" /></Suspense>} />
       <Route path="*" element={<Suspense fallback={loading}><WorkspacePage /></Suspense>} />
     </Route>
-  </Routes>;
+  </Routes></PageLoadBoundary>;
 }

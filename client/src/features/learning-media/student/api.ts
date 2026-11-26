@@ -5,7 +5,7 @@ import type { EducationRecord } from '../../education/api';
 export type Collection = 'videos' | 'shorts' | 'ai-learning';
 export type MediaKind = 'video' | 'short' | 'resource';
 export type Origin = 'human' | 'ai-assisted' | 'ai-generated';
-export type Translation = { locale: string; title: string; description: string };
+export type Translation = { locale: string; title: string; description: string; imageAlt?: string | null };
 
 export interface LearningItem {
   id: string;

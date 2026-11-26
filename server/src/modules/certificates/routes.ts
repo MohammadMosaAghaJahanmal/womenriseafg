@@ -42,7 +42,9 @@ function unavailable() {
   return new ApiError(404, 'NOT_FOUND', 'The course or public certificate is unavailable.');
 }
 
-export function createCertificateRoutes(db: Sequelize, courses: CourseStore, options: { origins: readonly string[]; production: boolean }) {
+export function createCertificateRoutes(db: Sequelize, courses: CourseStore, options: {
+  origins: readonly string[]; production: boolean; managed?: boolean;
+}) {
   const router = Router();
   const limit = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -74,6 +76,7 @@ export function createCertificateRoutes(db: Sequelize, courses: CourseStore, opt
         SELECT c.slug, claim.locale, claim.issued_at AS issuedAt
         FROM certificates claim JOIN courses c ON c.id = claim.course_id
         WHERE claim.code = $code AND c.status = 'published'
+          ${options.managed ? 'AND NOT EXISTS (SELECT 1 FROM certificate_withdrawals w WHERE w.code = claim.code)' : ''}
       `, { type: QueryTypes.SELECT, bind: { code } });
       const course = record && await courses.findPublic(record.slug);
       if (!course) throw unavailable();

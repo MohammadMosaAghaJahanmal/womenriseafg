@@ -14,6 +14,8 @@ test('homepage settings permit only the complete ordered section list and known 
   assert.ok(editSettings.validate({ ...settings, sections: sections.slice(1) }).error);
   assert.ok(editSettings.validate({ ...settings, sections: [sections[1], ...sections.slice(1)] }).error);
   assert.ok(editSettings.validate({ ...settings, branding: { ...settings.branding, logoId: 'https://example.test/image' } }).error);
+  assert.equal(editSettings.validate({ ...settings, branding: { ...settings.branding, defaultTheme: 'dark' } }).error, undefined);
+  assert.ok(editSettings.validate({ ...settings, branding: { ...settings.branding, defaultTheme: 'bright' } }).error);
   assert.ok(editSettings.validate({ ...settings, announcements: [
     { enabled: true, translations: [{ locale: 'xx', title: 'Heading', body: 'Message' }] },
   ] }).error);

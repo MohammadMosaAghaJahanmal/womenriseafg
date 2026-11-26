@@ -70,3 +70,4 @@
   .admin-overview-grid, .admin-filters { grid-template-columns: minmax(0, 1fr); }
   .ui-tabpanel { padding-block: .75rem; }
 }
+.admin-page-order { max-inline-size: 18rem; margin-block: .65rem; }

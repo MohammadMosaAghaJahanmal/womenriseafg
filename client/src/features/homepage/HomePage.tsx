@@ -1,41 +1,22 @@
-import { Bell, BookOpen, HeartHandshake } from 'lucide-react';
+import { Bell, HeartHandshake } from 'lucide-react';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Button, SelectField, StatePanel } from '../../components/ui/Primitives';
 import { chooseTranslation, learnerLanguageName } from '../courses/student/components';
-import { useDataSaving } from '../data-saving/preferences';
 import { publishedTaxonomy } from '../discovery/api';
 import { useEducationData } from '../education/useEducationData';
 import { ContinueLearning } from '../engagement/ContinueLearning';
 import { loadHomepage, type Branding, type Homepage, type SectionKey } from './api';
 import { brandCopy, useBranding } from './Branding';
 import { HomeSection } from './HomeCards';
+import { HomeHero } from './HomeHero';
 import { homepageNamespace as ns } from './strings';
 import '../discover/discover.css';
 import './homepage.css';
 
 const languageFilter = /^[a-z]{2,8}(?:-[a-z\d]{1,8})*$/i;
 const loadLanguages = (signal: AbortSignal) => publishedTaxonomy('languages', signal);
-
-function Hero({ branding }: { branding: Branding }) {
-  const { t, i18n } = useTranslation(ns);
-  const { enabled: saving } = useDataSaving();
-  const slogan = brandCopy(branding, i18n.language, 'slogan');
-  const showDefault = !slogan || slogan === t('heroTitle') + ' ' + t('heroAccent');
-  return <header className="discover-hero">
-    <div className="discover-hero__copy">
-      <h1>{showDefault ? <>{t('heroTitle')}{' '}<span>{t('heroAccent')}</span></> : slogan}</h1>
-      <p>{t('heroDescription')}</p>
-      <Link to="/courses" className="discover-start"><BookOpen size={18} aria-hidden="true" />{t('start')}</Link>
-    </div>
-    {!saving && <div className="discover-hero__art" aria-hidden="true">
-      <img src="/art/study.webp" srcSet="/art/study-480.webp 480w, /art/study.webp 1000w"
-        sizes="(max-width: 650px) 240px, (max-width: 959px) 49vw, (max-width: 1490px) 40vw, 620px"
-        width="1000" height="667" alt="" fetchPriority="high" decoding="async" />
-    </div>}
-  </header>;
-}
 
 function Announcements({ entries }: { entries: Homepage['announcements'] }) {
   const { t, i18n } = useTranslation(ns);
@@ -109,7 +90,7 @@ export default function HomePage() {
     setParameters(query, { preventScrollReset: true });
   }
   return <div className="discover-page home-page">
-    <Hero branding={data?.branding ?? branding} />
+    <HomeHero branding={data?.branding ?? branding} />
     {(hasCatalog || language) && <LanguageFilter value={language} change={setLanguage} />}
     {data && data.sections.filter(item => item.enabled).map(({ key }) =>
       <Section section={key} data={data} preferred={preferred} language={language} key={key} />)}

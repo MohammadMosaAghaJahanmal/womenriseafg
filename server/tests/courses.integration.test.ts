@@ -27,6 +27,9 @@ import { createCourseRoutes } from '../src/modules/courses/routes';
 import { migrateCourses } from '../src/modules/courses/migration';
 import { createCourseStore } from '../src/modules/courses/store';
 import { newCourse } from '../src/modules/courses/validation';
+import { migrateCurriculumAuthoring } from '../src/modules/courses/authoringMigration';
+import { createQuizStore } from '../src/modules/quizzes/store';
+import { fixtureCredit, migrateAuthoringFixtures } from './fixtures/curriculum';
 
 const origin = 'https://learning.example.test';
 const prefix = '/admin/courses';
@@ -75,6 +78,7 @@ test('published curriculum flows from course administration to free guest lesson
   const education = createEducationStore(db);
   const media = createMediaStore(db);
   const store = createCourseStore(db);
+  const quizzes = createQuizStore(db);
   const logger = pino({ level: 'silent' });
   const options = { production: true, origins: [origin], logger };
   const server = createServer(createApp({
@@ -92,6 +96,8 @@ test('published curriculum flows from course administration to free guest lesson
   const createdMedia: string[] = [];
   const createdCourses: string[] = [];
   const createdTaxonomy: string[] = [];
+  const createdQuizzes: string[] = [];
+  const createdQuestions: string[] = [];
   let ready = false;
 
   try {
@@ -101,6 +107,8 @@ test('published curriculum flows from course administration to free guest lesson
     const applied = await Promise.all([migrateCourses(db), migrateCourses(db)]);
     assert.ok(applied.filter(Boolean).length <= 1);
     assert.equal(await migrateCourses(db), false);
+    await migrateAuthoringFixtures(db);
+    assert.equal(await migrateCurriculumAuthoring(db), false);
     ready = true;
     await db.query('INSERT INTO roles (code) VALUES ($role)', { bind: { role } });
     await db.query("INSERT INTO role_permissions (role_code,permission_code) VALUES ($role,'admin:access'),($role,'course:manage')",
@@ -171,7 +179,7 @@ test('published curriculum flows from course administration to free guest lesson
     assert.equal((await request('/admin/media', 'GET', author)).status, 403);
 
     const common = { subjectId: null, levelId: null, gradeId: null, thumbnailId: null, estimatedMinutes: 15,
-      instructor: '', tagIds: [], relatedCourseIds: [] };
+      instructor: '', tagIds: [], relatedCourseIds: [], provenance: fixtureCredit };
     const restricted = await upload('attachment', 'practice.txt', Buffer.from('Restricted course fixture ' + key), false);
     const inaccessible = await request(prefix, 'POST', admin, {
       ...common, slug: 'restricted-' + key, translations: overview('Restricted resource'),
@@ -283,6 +291,50 @@ test('published curriculum flows from course administration to free guest lesson
     assert.equal((await request(endpoint, 'DELETE', admin, { confirm: true, version: record.version })).status, 204);
     assert.equal((await request('/admin/media/' + video.id + '/status', 'PATCH', admin,
       { status: 'archived', version: video.version })).status, 200);
+
+    const diagram = await upload('image', 'diagram.png', await readFile(path.join(__dirname, 'fixtures', 'media', 'thumbnail.png')), false);
+    const question = await quizzes.createQuestion({
+      kind: 'single-choice', correctOptions: [0], provenance: fixtureCredit,
+      translations: [{ locale: 'en', prompt: 'Count the shapes', options: ['One', 'Two'], acceptedAnswers: [], explanation: '' }],
+    });
+    createdQuestions.push(question.id);
+    let quiz = await quizzes.createQuiz({
+      slug: 'standalone-' + key, courseId: null, passingScore: 60, questionIds: [question.id], provenance: fixtureCredit,
+      translations: [{ locale: 'en', title: 'Study quiz', description: 'Check your understanding.' }],
+    });
+    createdQuizzes.push(quiz.id);
+    for (const next of ['educational-review', 'approved', 'published'] as const) {
+      quiz = await quizzes.changeStatus(quiz.id, next, quiz.version);
+    }
+    const imageLesson = makeLesson('diagram', 'image', diagram.id);
+    const language = imageLesson.translations[0]!;
+    imageLesson.translations[0] = { ...language, imageAlt: 'One square on a blue background' };
+    const authored = { ...common, slug: 'authoring-' + key, provenance: { ...fixtureCredit,
+      origin: 'ai-assisted' as const, tool: 'Fixture method', notes: 'Private review notes' },
+    translations: overview('Image and quiz'), chapters: [{ translations: localized('Study'),
+      lessons: [imageLesson, { ...makeLesson('check', 'quiz'), quizId: quiz.id }] }] };
+    let authoredCourse = await create({ ...authored, provenance: null });
+    authoredCourse = await status(authoredCourse, 'educational-review');
+    const authoredAdmin = prefix + '/' + authoredCourse.id;
+    const incomplete = await request(authoredAdmin + '/status', 'PATCH', admin, {
+      status: 'approved', version: authoredCourse.version,
+    });
+    assert.equal(incomplete.status, 422);
+    assert.equal((await incomplete.json() as { error: { code: string } }).error.code, 'INCOMPLETE_PROVENANCE');
+    authoredCourse = await course(await request(authoredAdmin, 'PUT', admin, { ...authored, version: authoredCourse.version }));
+    authoredCourse = await status(await status(authoredCourse, 'approved'), 'published');
+    const detailPath = '/courses/' + authoredCourse.slug;
+    const publicImage = await request(detailPath + '/lessons/diagram');
+    assert.equal(publicImage.status, 200);
+    const imageBody = await publicImage.text();
+    assert.match(imageBody, /One square on a blue background/);
+    assert.doesNotMatch(imageBody, /Private review notes/);
+    const publicQuiz = await request(detailPath + '/lessons/check');
+    assert.equal(publicQuiz.status, 200);
+    assert.equal((await publicQuiz.json() as { lesson: { quizSlug: string } }).lesson.quizSlug, quiz.slug);
+    await assert.rejects(quizzes.changeStatus(quiz.id, 'archived', quiz.version), { code: 'QUIZ_IN_USE' });
+    authoredCourse = await status(authoredCourse, 'archived');
+    assert.equal((await quizzes.changeStatus(quiz.id, 'archived', quiz.version)).status, 'archived');
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
     try {
@@ -291,6 +343,8 @@ test('published curriculum flows from course administration to free guest lesson
           await db.query("DELETE FROM media_references WHERE owner_type='course' AND owner_id=$id", { bind: { id } });
         }
         for (const id of [...createdCourses].reverse()) await db.query('DELETE FROM courses WHERE id=$id', { bind: { id } });
+        for (const id of createdQuizzes) await db.query('DELETE FROM quizzes WHERE id=$id', { bind: { id } });
+        for (const id of createdQuestions) await db.query('DELETE FROM quiz_questions WHERE id=$id', { bind: { id } });
         for (const id of [...createdTaxonomy].reverse()) await db.query('DELETE FROM education_entries WHERE id=$id', { bind: { id } });
         for (const id of createdMedia) await db.query('DELETE FROM media_assets WHERE id=$id', { bind: { id } });
         await db.query('DELETE FROM users WHERE login IN ($admin,$learner,$staff)', {

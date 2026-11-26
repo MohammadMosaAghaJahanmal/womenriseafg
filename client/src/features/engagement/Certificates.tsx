@@ -10,6 +10,7 @@ import { useEducationData } from '../education/useEducationData';
 import { useBranding } from '../homepage/Branding';
 import { courseCompletion, useLearning } from './local';
 import { LearningPreference } from './Preference';
+import { defaultCertificateTemplates, publicCertificateTemplates } from './certificateSettings';
 import { learningNamespace } from './strings';
 import './certificate.css';
 
@@ -25,15 +26,15 @@ interface Certificate {
 const api = axios.create({ baseURL: '/api/v1/certificates', timeout: 12_000 });
 const verifyPath = (code: string) => '/certificates/verify/' + encodeURIComponent(code);
 
-function CertificatePaper({ certificate, recipient, template }: {
-  certificate: Certificate; recipient: string; template: 'classic' | 'simple';
+function CertificatePaper({ certificate, recipient, template, heading }: {
+  certificate: Certificate; recipient: string; template: 'classic' | 'simple'; heading?: string;
 }) {
   const { t, i18n } = useTranslation(learningNamespace);
   const { branding } = useBranding();
   const date = new Intl.DateTimeFormat(i18n.language, { timeZone: 'UTC', dateStyle: 'long' });
   return <article className={'certificate-paper certificate-' + template}>
     <Award size={42} aria-hidden="true" /><bdi className="certificate-brand">{branding.name}</bdi>
-    <h2>{t('certificateFor')}</h2>
+    <h2>{heading || t('certificateFor')}</h2>
     {recipient.trim() && <p className="certificate-recipient"><bdi>{recipient.trim()}</bdi></p>}
     <p className="certificate-course" lang={certificate.locale} dir="auto">{certificate.courseTitle}</p>
     <p>{t('selfReported')}</p>
@@ -46,7 +47,7 @@ function CertificatePaper({ certificate, recipient, template }: {
 }
 
 export function CourseCertificate() {
-  const { t } = useTranslation(learningNamespace);
+  const { t, i18n } = useTranslation(learningNamespace);
   const { slug = '' } = useParams();
   const { preferred, explicit } = useContentLanguage();
   const learning = useLearning();
@@ -54,6 +55,10 @@ export function CourseCertificate() {
   const { result, reload } = useEducationData(load);
   const [recipient, setRecipient] = useState('');
   const [template, setTemplate] = useState<'classic' | 'simple'>('classic');
+  const templateOptions = useEducationData(publicCertificateTemplates).result;
+  const templates = templateOptions.status === 'ready' && templateOptions.data.length ? templateOptions.data : defaultCertificateTemplates;
+  const selected = templates.find(option => option.layout === template) ?? templates[0]!;
+  const heading = selected.titles[i18n.language as keyof typeof selected.titles];
   const [publicVerification, setPublicVerification] = useState(false);
   const [receipt, setReceipt] = useState<Certificate>();
   const [pending, setPending] = useState(false);
@@ -90,8 +95,8 @@ export function CourseCertificate() {
     {ready && <form className="learn-panel certificate-controls certificate-options" onSubmit={issue}>
       <InputField label={t('recipient')} value={recipient} autoComplete="off" maxLength={120}
         onChange={event => setRecipient(event.currentTarget.value)} />
-      <SelectField label={t('template')} value={template} onChange={event => setTemplate(event.currentTarget.value as 'classic' | 'simple')}>
-        <option value="classic">{t('classic')}</option><option value="simple">{t('simple')}</option>
+      <SelectField label={t('template')} value={selected.layout} onChange={event => setTemplate(event.currentTarget.value as 'classic' | 'simple')}>
+        {templates.map(option => <option key={option.layout} value={option.layout}>{t(option.layout)}</option>)}
       </SelectField>
       <label className="certificate-check"><input type="checkbox" checked={publicVerification}
         onChange={event => setPublicVerification(event.currentTarget.checked)} />{t('publicVerification')}</label>
@@ -103,7 +108,7 @@ export function CourseCertificate() {
       </div>
       {error && <p role="alert">{t(error)}</p>}
     </form>}
-    {current && <CertificatePaper certificate={current} recipient={recipient} template={template} />}
+    {current && <CertificatePaper certificate={current} recipient={recipient} template={selected.layout} heading={heading} />}
   </div>;
 }
 

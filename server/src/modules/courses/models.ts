@@ -35,6 +35,7 @@ export function defineCourseModels(db: Sequelize) {
     thumbnailId: { type: id, field: 'thumbnail_id' },
     estimatedMinutes: { type: DataTypes.INTEGER.UNSIGNED, field: 'estimated_minutes' },
     instructor: { type: title, allowNull: false },
+    provenance: { type: DataTypes.JSON },
     creatorId: { type: id, field: 'creator_id' },
     createdAt: { type: DataTypes.DATE(3), field: 'created_at', allowNull: false },
     updatedAt: { type: DataTypes.DATE(3), field: 'updated_at', allowNull: false },
@@ -46,6 +47,7 @@ export function defineCourseModels(db: Sequelize) {
     description: { type: DataTypes.TEXT, allowNull: false },
     objectives: { type: DataTypes.TEXT, allowNull: false },
     prerequisites: { type: DataTypes.TEXT, allowNull: false },
+    provenance: { type: DataTypes.JSON },
     searchText: { type: DataTypes.TEXT, field: 'search_text', allowNull: false },
   }, { tableName: 'course_translations', timestamps: false });
   const Chapter = db.define<Model<ChapterRow>>('CourseChapter', {
@@ -65,6 +67,7 @@ export function defineCourseModels(db: Sequelize) {
     slug: { type: DataTypes.STRING(120), allowNull: false },
     kind: { type: DataTypes.STRING(12), allowNull: false },
     mediaId: { type: id, field: 'media_id' },
+    quizId: { type: id, field: 'quiz_id' },
     position: { type: position, allowNull: false },
   }, { tableName: 'lessons', timestamps: false });
   const LessonTranslation = db.define<Model<LessonTranslationRow>>('CourseLessonTranslation', {
@@ -73,6 +76,8 @@ export function defineCourseModels(db: Sequelize) {
     title: { type: title, allowNull: false },
     description: { type: DataTypes.TEXT, allowNull: false },
     body: { type: DataTypes.TEXT('medium'), allowNull: false },
+    imageAlt: { type: DataTypes.STRING(500), field: 'image_alt', allowNull: false },
+    provenance: { type: DataTypes.JSON },
   }, { tableName: 'lesson_translations', timestamps: false });
   const LessonResource = db.define<Model<LessonResourceRow>>('CourseLessonResource', {
     lessonId: { type: id, field: 'lesson_id', primaryKey: true },

@@ -13,6 +13,7 @@ export interface LearningMediaTranslation {
   locale: string;
   title: string;
   description: string;
+  imageAlt?: string | null;
 }
 
 export interface LearningMediaInput {
@@ -59,7 +60,7 @@ export interface LearningMediaRelated {
 }
 
 export type LearningMediaErrorCode = 'NOT_FOUND' | 'CONFLICT' | 'STALE_VERSION' | 'INVALID_TRANSITION' |
-  'INVALID_REFERENCE' | 'INVALID_SHORT' | 'REVIEW_REQUIRED' | 'INCOMPLETE_CONTENT' | 'DRAFT_MEDIA_FORBIDDEN';
+  'INVALID_REFERENCE' | 'INVALID_SHORT' | 'REVIEW_REQUIRED' | 'INCOMPLETE_CONTENT' | 'DRAFT_MEDIA_FORBIDDEN' | 'MISSING_IMAGE_ALT';
 
 export class LearningMediaError extends Error {
   constructor(readonly code: LearningMediaErrorCode) {

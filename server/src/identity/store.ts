@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Op, QueryTypes, Sequelize, Transaction, UniqueConstraintError } from 'sequelize';
 import { defineIdentityModels } from './models';
-import { administrationPermission, administratorRoles, studentRole, superAdminRole } from './roles';
+import { administrationPermission, administratorRoles, staffWorkspacePermission, studentRole, superAdminRole } from './roles';
 
 export interface IdentityAccount {
   id: string;
@@ -112,7 +112,9 @@ export function createIdentityStore(db: Sequelize) {
           throw new SessionPrincipalChangedError('Account data changed before the session could be issued.');
         }
         const account = await readAccount(userId, transaction);
-        if (!account || account.permissions.includes(administrationPermission) !== adminScope) {
+        const privileged = account?.permissions.some(permission =>
+          permission === administrationPermission || permission === staffWorkspacePermission);
+        if (!account || privileged !== adminScope) {
           throw new SessionPrincipalChangedError('Account permissions do not match the sign-in mode.');
         }
         await writeSession(userId, session, adminScope, transaction);

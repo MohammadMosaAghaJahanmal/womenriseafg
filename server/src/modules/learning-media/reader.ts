@@ -52,7 +52,7 @@ export function learningMediaReader(db: Sequelize) {
   async function records(rows: EntryProjection[], transaction: Transaction, publicOnly: boolean) {
     if (!rows.length) return [];
     const translations = await db.query<TranslationProjection>(`
-      SELECT t.learning_media_id AS entryId, t.locale, t.title, t.description
+      SELECT t.learning_media_id AS entryId, t.locale, t.title, t.description, t.image_alt AS imageAlt
       FROM learning_media_translations t
       WHERE t.learning_media_id IN (:ids) ${publicOnly ? 'AND ' + publishedLocale('t.locale') : ''}
       ORDER BY t.locale

@@ -23,13 +23,17 @@ interface AppOptions {
   quizRoutes?: Router;
   discoveryRoutes?: Router;
   certificateRoutes?: Router;
+  certificateManagementRoutes?: Router;
+  correctionRoutes?: Router;
+  staffRoutes?: Router;
+  operationsRoutes?: Router;
   homepageRoutes?: Router;
   trustedProxies?: string[];
   passengerSocket?: () => boolean;
 }
 
 const privateRoots = /^\/(?:api|media|uploads?|storage|server|client|src|docs|node_modules)(?:\/|$)/i;
-const privateNavigation = /^\/(?:admin|account|login|register|design-preview|certificates|courses\/[^/]+\/certificate|downloads|my-learning|saved|settings)(?:\/|$)/i;
+const privateNavigation = /^\/(?:admin|staff|account|login|register|design-preview|certificates|courses\/[^/]+\/certificate|downloads|my-learning|saved|settings|report-correction)(?:\/|$)/i;
 const fingerprintedAsset = /^assets\/[a-zA-Z0-9_.-]+-[a-zA-Z0-9_-]{8}\.(?:js|mjs|css|woff2|svg|webp|png|jpe?g)$/;
 const compressibleAsset = /^(?:index\.html|offline\.html|offline-fallback\.(?:css|js)|assets\/[a-zA-Z0-9_.-]+-[a-zA-Z0-9_-]{8}\.(?:js|mjs|css))$/;
 const forwardingHeaders = ['forwarded', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-port', 'x-forwarded-proto'];
@@ -99,6 +103,7 @@ export function createApp(options: AppOptions): Express {
     response.set('Cache-Control', 'no-store');
     if (options.courseRoutes && /^\/v1\/admin\/courses(?:\/|$)/i.test(request.path)) return next();
     if (options.homepageRoutes && request.method === 'PUT' && /^\/v1\/admin\/homepage\/?$/i.test(request.path)) return next();
+    if (options.staffRoutes && request.method === 'PATCH' && /^\/v1\/staff\/assignments\/[a-f0-9-]{36}\/copy\/?$/i.test(request.path)) return next();
     if (options.certificateRoutes && request.method === 'POST' && /^\/v1\/certificates\/?$/i.test(request.path)) {
       return parseCertificateJson(request, response, next);
     }
@@ -114,6 +119,10 @@ export function createApp(options: AppOptions): Express {
   if (options.quizRoutes) app.use('/api/v1', options.quizRoutes);
   if (options.discoveryRoutes) app.use('/api/v1', options.discoveryRoutes);
   if (options.certificateRoutes) app.use('/api/v1', options.certificateRoutes);
+  if (options.certificateManagementRoutes) app.use('/api/v1', options.certificateManagementRoutes);
+  if (options.correctionRoutes) app.use('/api/v1', options.correctionRoutes);
+  if (options.staffRoutes) app.use('/api/v1', options.staffRoutes);
+  if (options.operationsRoutes) app.use('/api/v1', options.operationsRoutes);
   if (options.homepageRoutes) app.use('/api/v1', options.homepageRoutes);
   app.use('/api', notFound);
 

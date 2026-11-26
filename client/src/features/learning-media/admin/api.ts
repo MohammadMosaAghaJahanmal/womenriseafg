@@ -11,7 +11,7 @@ export const learningResourceKinds: readonly MediaKind[] = ['audio', 'image', 'p
 export type LearningMediaKind = typeof learningMediaKinds[number];
 export type LearningMediaOrigin = typeof learningMediaOrigins[number];
 
-export interface MediaTranslation { locale: string; title: string; description: string }
+export interface MediaTranslation { locale: string; title: string; description: string; imageAlt?: string | null }
 export interface LearningMediaInput {
   slug: string;
   kind: LearningMediaKind;
@@ -109,6 +109,7 @@ export function entryError(error: unknown, fallback = 'failure') {
     case 'INVALID_SHORT': return 'invalidFormat';
     case 'REVIEW_REQUIRED': return 'needReview';
     case 'INCOMPLETE_CONTENT': return 'incomplete';
+    case 'MISSING_IMAGE_ALT': return 'missingImageAlt';
     default: return fallback;
   }
 }

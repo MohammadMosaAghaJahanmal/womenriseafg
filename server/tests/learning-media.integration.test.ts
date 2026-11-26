@@ -17,6 +17,7 @@ import { createIdentityStore } from '../src/identity/store';
 import { hashPassword } from '../src/modules/auth/passwords';
 import { createAuthRoutes } from '../src/modules/auth/routes';
 import { migrateCourses } from '../src/modules/courses/migration';
+import { fixtureCredit, migrateAuthoringFixtures } from './fixtures/curriculum';
 import { createCourseRoutes } from '../src/modules/courses/routes';
 import { createCourseStore } from '../src/modules/courses/store';
 import type { CourseRecord } from '../src/modules/courses/contract';
@@ -106,6 +107,7 @@ test('reviewed videos, Shorts and AI resources reach guests from an isolated MyS
     const migratedRuns = await Promise.all([migrateLearningMedia(db), migrateLearningMedia(db)]);
     assert.ok(migratedRuns.filter(Boolean).length <= 1);
     assert.equal(await migrateLearningMedia(db), false);
+    await migrateAuthoringFixtures(db);
     migrated = true;
     await db.query('INSERT INTO roles (code) VALUES ($role)', { bind: { role } });
     await db.query("INSERT INTO role_permissions (role_code,permission_code) VALUES ($role,'admin:access'),($role,$permission)",
@@ -165,7 +167,7 @@ test('reviewed videos, Shorts and AI resources reach guests from an isolated MyS
     const categoryResponse = await expectJson<{ items: { id: string }[] }>(await request('/education/categories'));
     const categoryId = categoryResponse.items[0]!.id;
     const curriculum = await expectJson<{ item: CourseRecord }>(await request('/admin/courses', 'POST', admin, {
-      slug: 'editorial-course-' + suffix, translations: translations('Count and compare'),
+      slug: 'editorial-course-' + suffix, translations: translations('Count and compare'), provenance: fixtureCredit,
       chapters: [{ translations: [{ locale: 'en', title: 'Practice' }], lessons: [{ slug: 'compare', kind: 'text',
         translations: [{ ...translations('Comparison lesson')[0], body: 'Group the objects in two sets.' }] }] }],
     }), 201);
@@ -252,10 +254,17 @@ test('reviewed videos, Shorts and AI resources reach guests from an isolated MyS
     assert.equal((await request('/ai-learning/' + video.slug)).status, 200);
 
     let graphic = await publishFile(await upload('image', 'graphic.png', await fixture('thumbnail.png')));
-    let resource = await create({ ...common, kind: 'resource', mediaId: graphic.id, slug: 'diagram-' + suffix,
+    const resourceInput: LearningMediaInput = { ...common, kind: 'resource', mediaId: graphic.id, slug: 'diagram-' + suffix,
       aiOrigin: 'ai-generated', aiTool: 'Offline creator fixture', aiNotes: 'Private production detail',
-      translations: translations('Counting diagram') });
-    resource = await move(await move(resource, 'educational-review'), 'approved', admin, workflowNote);
+      translations: translations('Counting diagram') };
+    let resource = await move(await create(resourceInput), 'educational-review');
+    const missingImageAlt = await expectJson<{ error: { code: string } }>(await change(resource, 'approved', admin, workflowNote), 422);
+    assert.equal(missingImageAlt.error.code, 'MISSING_IMAGE_ALT');
+    const withImageAlt = await expectJson<{ item: LearningMediaRecord }>(await request(adminPath + '/' + resource.id, 'PUT', admin, {
+      ...resourceInput, version: resource.version,
+      translations: resourceInput.translations.map(copy => ({ ...copy, imageAlt: 'Three shapes separated into two groups.' })),
+    }));
+    resource = await move(withImageAlt.item, 'approved', admin, workflowNote);
     graphic = (await expectJson<{ item: MediaAsset }>(await fileStatus(graphic, 'archived'))).item;
     graphic = (await expectJson<{ item: MediaAsset }>(await request('/admin/media/' + graphic.id + '/status', 'PATCH',
       admin, { status: 'draft', version: graphic.version }))).item;
@@ -265,6 +274,8 @@ test('reviewed videos, Shorts and AI resources reach guests from an isolated MyS
     resource = await move(resource, 'draft');
     resource = await move(await move(resource, 'educational-review'), 'approved', admin, workflowNote);
     resource = await move(resource, 'published');
+    const illustrated = await expectJson<{ item: { translations: { imageAlt: string }[] } }>(await request('/ai-learning/' + resource.slug));
+    assert.equal(illustrated.item.translations[0]!.imageAlt, 'Three shapes separated into two groups.');
     const collection = await expectJson<{ items: { slug: string }[] }>(await request('/ai-learning?categoryId=' + categoryId));
     assert.deepEqual(new Set(collection.items.map(item => item.slug)), new Set([video.slug, resource.slug]));
     assert.equal((await request('/ai-learning/' + short.slug)).status, 404);

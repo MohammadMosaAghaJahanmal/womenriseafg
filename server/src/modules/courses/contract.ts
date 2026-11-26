@@ -1,8 +1,9 @@
 import type { EducationStatus } from '../education/contract';
+import type { ContentProvenance } from './provenance';
 
 export const courseManagePermission = 'course:manage';
 export const coursePublishPermission = 'course:publish';
-export const lessonKinds = ['text', 'video', 'audio', 'pdf'] as const;
+export const lessonKinds = ['text', 'video', 'audio', 'pdf', 'image', 'quiz'] as const;
 export type LessonKind = typeof lessonKinds[number];
 export type CourseStatus = EducationStatus;
 
@@ -14,10 +15,13 @@ export interface CourseTranslation extends ChapterTranslation {
   description: string;
   objectives: string;
   prerequisites: string;
+  provenance?: ContentProvenance | null;
 }
 export interface LessonTranslation extends ChapterTranslation {
   description: string;
   body: string;
+  imageAlt?: string;
+  provenance?: ContentProvenance | null;
 }
 export interface LessonResource {
   mediaId: string;
@@ -28,6 +32,7 @@ export interface LessonInput {
   slug: string;
   kind: LessonKind;
   mediaId: string | null;
+  quizId?: string | null;
   translations: LessonTranslation[];
   resources: LessonResource[];
 }
@@ -44,6 +49,7 @@ export interface CourseInput {
   thumbnailId: string | null;
   estimatedMinutes: number | null;
   instructor: string;
+  provenance?: ContentProvenance | null;
   tagIds: string[];
   relatedCourseIds: string[];
   translations: CourseTranslation[];
@@ -77,7 +83,7 @@ export interface CourseListOptions {
 }
 export type CourseErrorCode =
   'NOT_FOUND' | 'CONFLICT' | 'STALE_VERSION' | 'INVALID_REFERENCE' | 'INVALID_TRANSITION' |
-  'INCOMPLETE_COURSE' | 'RESOURCE_DOWNLOAD_FORBIDDEN';
+  'INCOMPLETE_COURSE' | 'RESOURCE_DOWNLOAD_FORBIDDEN' | 'INCOMPLETE_PROVENANCE';
 export class CourseError extends Error {
   constructor(readonly code: CourseErrorCode) { super(code); }
 }

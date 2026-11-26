@@ -11,7 +11,7 @@ const entries = self.__WB_MANIFEST;
 const publicAssets = new Set(entries.map(entry =>
   new URL(typeof entry === 'string' ? entry : entry.url, self.location.origin).pathname));
 const downloadsNavigation = /^\/downloads(?:\/(?:[a-z0-9_:-]|%3a){1,180})?\/?$/i;
-const publicNavigation = /^\/(?:explore|courses(?:\/[a-z0-9-]+)?|learn\/[a-z0-9-]+\/[a-z0-9-]+|(?:videos|shorts|ai-learning|quizzes|learning-paths)(?:\/[a-z0-9-]+)?|library(?:\/[a-z0-9-]+(?:\/read)?)?|search|daily-learning|my-learning|saved|settings|status)\/?$/i;
+const publicNavigation = /^\/(?:explore|courses(?:\/[a-z0-9-]+)?|learn\/[a-z0-9-]+\/[a-z0-9-]+|(?:videos|shorts|ai-learning|quizzes|learning-paths|collections)(?:\/[a-z0-9-]+)?|library(?:\/[a-z0-9-]+(?:\/read)?)?|search|daily-learning|my-learning|saved|settings|privacy|status)\/?$/i;
 
 function anonymousRequest(input: RequestInfo) {
   return new Request(input, { credentials: 'omit', redirect: 'error', cache: 'reload' });

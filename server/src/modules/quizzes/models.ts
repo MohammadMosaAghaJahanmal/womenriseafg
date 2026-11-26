@@ -1,5 +1,5 @@
 import { DataTypes, type Model, type Sequelize } from 'sequelize';
-import type { QuestionKind, QuestionTranslation, QuizRecord, QuizTranslation } from './contract';
+import type { QuestionInput, QuestionKind, QuestionTranslation, QuizRecord, QuizTranslation } from './contract';
 
 export interface QuizRow extends Omit<QuizRecord, 'questionIds' | 'translations' | 'questionCount' | 'courseSlug' | 'createdAt' | 'updatedAt'> {
   createdAt: Date;
@@ -9,6 +9,7 @@ export interface QuizRow extends Omit<QuizRecord, 'questionIds' | 'translations'
 export interface QuestionRow {
   id: string;
   kind: QuestionKind;
+  provenance?: QuestionInput['provenance'];
   version: number;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +30,7 @@ export function defineQuizModels(db: Sequelize) {
   const primaryLocale = () => ({ type: locale, primaryKey: true });
   const primaryPosition = () => ({ type: position, primaryKey: true });
   const requiredText = () => ({ type: DataTypes.TEXT, allowNull: false });
+  const provenance = () => ({ type: DataTypes.JSON });
   const versioned = () => ({
     id: primaryId(),
     version: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
@@ -43,21 +45,25 @@ export function defineQuizModels(db: Sequelize) {
     courseId: { type: id },
     status: { type: DataTypes.STRING(24), allowNull: false },
     passingScore: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false },
+    provenance: provenance(),
   }, table('quizzes'));
 
   const QuizTranslation = db.define<Model<QuizTranslationRow>>('QuizTranslation', {
     quizId: primaryId(), locale: primaryLocale(),
     title: { type: DataTypes.STRING(150), allowNull: false },
     description: requiredText(), searchText: requiredText(),
+    provenance: provenance(),
   }, table('quiz_translations'));
 
   const Question = db.define<Model<QuestionRow>>('QuizQuestion', {
     ...versioned(), kind: { type: DataTypes.STRING(16), allowNull: false },
+    provenance: provenance(),
   }, table('quiz_questions'));
 
   const Prompt = db.define<Model<PromptRow>>('QuizQuestionTranslation', {
     questionId: primaryId(), locale: primaryLocale(),
     prompt: requiredText(), explanation: requiredText(), searchText: requiredText(),
+    provenance: provenance(),
   }, table('quiz_question_translations'));
 
   const Option = db.define<Model<OptionRow>>('QuizQuestionOption', {

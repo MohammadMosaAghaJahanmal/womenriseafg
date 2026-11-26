@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type DialogHTMLAttributes } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Bookmark, BookOpen, CalendarDays, ChevronDown, ChevronRight,
+  Bookmark, BookOpen, CalendarDays, ChevronDown, ChevronRight, Layers,
   ClipboardList, Compass, Download, Film, Globe2, GraduationCap, Home, Library, Menu, Monitor,
   Moon, PanelLeftClose, PanelLeftOpen, Route, Search, Settings, Sparkles, Sun, UserRound, Video, X,
   type LucideIcon,
@@ -12,6 +12,7 @@ import { languageNames } from '../i18n';
 import { BrandLogo, useBranding } from '../features/homepage/Branding';
 import { OfflineNotice } from '../features/offline/Notice';
 import { useOnlineStatus } from '../features/offline/online';
+import { CorrectionLink, PrivacyLink } from '../features/privacy/links';
 import { sectionPath } from '../pages/routes';
 import './shellTranslations';
 import './shell.css';
@@ -27,6 +28,7 @@ const mainLinks: Destination[] = [
   { to: '/library', label: 'library', icon: Library },
   { to: '/quizzes', label: 'quizzes', icon: ClipboardList },
   { to: '/learning-paths', label: 'paths', icon: Route },
+  { to: '/collections', label: 'collections', icon: Layers },
   { to: '/daily-learning', label: 'daily', icon: CalendarDays },
   { to: '/saved', label: 'saved', icon: Bookmark },
   { to: '/my-learning', label: 'learning', icon: GraduationCap },
@@ -36,7 +38,7 @@ const mainLinks: Destination[] = [
 const settingsLink: Destination = { to: '/settings', label: 'settings', icon: Settings };
 const allLinks: Destination[] = [...mainLinks, settingsLink, { to: '/status', label: 'status', icon: Monitor }];
 const bottomLinks = ['/', '/courses', '/shorts', '/library', '/my-learning'].map(to => allLinks.find(link => link.to === to)!);
-const collections = new Set(['/courses', '/videos', '/shorts', '/ai-learning', '/library', '/quizzes', '/learning-paths', '/downloads']);
+const collections = new Set(['/courses', '/videos', '/shorts', '/ai-learning', '/library', '/quizzes', '/learning-paths', '/collections', '/downloads']);
 const themeIcons = { light: Sun, dark: Moon, system: Monitor } as const;
 
 function Brand({ onClick }: { onClick?: () => void }) {
@@ -205,12 +207,15 @@ export default function StudentLayout() {
             aria-controls="shell-mobile-menu" aria-haspopup="dialog" aria-label={t('openMenu')}><Menu size={21} /></button>
         </div>
       </header>
-      <main id="main-content" ref={main} tabIndex={-1} className="shell-main">{offlineRoute ? <OfflineNotice /> : <Outlet />}</main>
+      <main id="main-content" ref={main} tabIndex={-1} className="shell-main">
+        {offlineRoute ? <OfflineNotice /> : <><Outlet /><CorrectionLink /></>}
+      </main>
       <footer className="shell-footer">
         <div className="shell-footer-brand"><Brand /><p>{t('mission')}</p></div>
         <nav aria-label={t('footerNav')} className="shell-footer-links">
           <Link to="/courses">{t('courses')}</Link><Link to="/library">{t('library')}</Link>
           <Link to="/downloads">{t('downloads')}</Link><Link to="/settings">{t('settings')}</Link>
+          <PrivacyLink />
           {online && <><Link to="/status">{t('status')}</Link><Link to="/admin">{t('admin')}</Link></>}
         </nav>
       </footer>

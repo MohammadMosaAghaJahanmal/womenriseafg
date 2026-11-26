@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { Theme } from '../../preferences';
 
 export type SectionKey = 'announcements' | 'continue' | 'subjects' | 'featured' | 'popular' | 'recommendedCourses' |
   'videos' | 'shorts' | 'books' | 'ai' | 'paths' | 'daily' | 'recent' | 'mission';
@@ -7,6 +8,7 @@ export interface Branding {
   name: string;
   logoId: string | null;
   faviconId: string | null;
+  defaultTheme?: Theme;
   translations: { locale: string; slogan: string; mission: string }[];
 }
 

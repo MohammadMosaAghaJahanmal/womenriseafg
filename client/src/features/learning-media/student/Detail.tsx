@@ -32,7 +32,7 @@ function TextPreview({ media }: { media: StudyMedia }) {
   </div>;
 }
 
-function ResourceMedia({ media, title }: { media: StudyMedia; title: string }) {
+function ResourceMedia({ media, alt, locale }: { media: StudyMedia; alt: string; locale: string }) {
   const { t } = useTranslation(learningMediaNamespace);
   const [show, setShow] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -45,7 +45,7 @@ function ResourceMedia({ media, title }: { media: StudyMedia; title: string }) {
     {show && (image
       ? failed ? <StatePanel kind="error" title={t('imageUnavailable')}>
         <Button variant="secondary" onClick={() => setFailed(false)}>{t('retry')}</Button>
-      </StatePanel> : <img src={fileUrl(media.id)} alt={title} decoding="async" onError={() => setFailed(true)} />
+      </StatePanel> : <img src={fileUrl(media.id)} alt={alt} lang={locale} decoding="async" onError={() => setFailed(true)} />
       : <TextPreview media={media} />)}
     <MediaActions media={media} />
   </div>;
@@ -93,7 +93,7 @@ export function MediaArticle({ detail, categories, contentLanguage, feed, move }
       <div className="lm-item-media">
         {short && kind === 'video' ? <ShortPlayer key={media.id} item={item} media={media} locale={translation.locale} move={move} study={study} />
           : playable ? <LessonMedia key={media.id} media={media} kind={kind} locale={translation.locale} study={study} />
-            : <ResourceMedia key={media.id} media={media} title={translation.title} />}
+            : <ResourceMedia key={media.id} media={media} alt={translation.imageAlt?.trim() || translation.title} locale={translation.locale} />}
       </div>
       <div className="lm-item-info">
         <MediaDetails item={item} media={media} fileSize={short && media.sizeBytes != null ? sizeLabel(media.sizeBytes, i18n.language) : undefined} />

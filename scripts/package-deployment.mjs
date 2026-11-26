@@ -9,7 +9,7 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const require = createRequire(import.meta.url);
 const releaseFiles = ['app.js', 'package.json', 'package-lock.json', 'client/package.json',
-  'server/package.json', '.env.example', 'docs/DEPLOYMENT.md'];
+  'server/package.json', '.env.example', 'docs/DEPLOYMENT.md', 'docs/PRIVACY-OPERATIONS.md'];
 
 function build(workspace, output) {
   execFileSync(process.execPath, [process.env.npm_execpath, 'run', 'build', '--workspace',

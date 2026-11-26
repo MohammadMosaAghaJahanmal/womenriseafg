@@ -43,6 +43,7 @@ const pathUpdate = Joi.object({ ...pathFields, version }).required();
 const pathStatus = Joi.object({ status: Joi.string().valid(...educationStatuses).required(), version }).required();
 const pathDeletion = Joi.object({ version, confirm: Joi.boolean().valid(true).required() }).required();
 const pathList = Joi.object({ q, ...pageFields, status: Joi.string().valid(...educationStatuses) });
+const collectionList = Joi.object({ q, ...pageFields, language: locale, preferred: locale });
 const localeQuery = Joi.object({ language: locale });
 const pathSlug = Joi.object({ slug: slug.required() });
 const pathId = Joi.object({ id: id.required() });
@@ -68,7 +69,7 @@ interface RouteOptions {
   logger: Pick<Logger, 'info'>;
 }
 
-export function createDiscoveryRoutes(store: DiscoveryStore, identity: IdentityStore, options: RouteOptions) {
+export function createDiscoveryRoutes(store: DiscoveryStore, identity: IdentityStore, options: RouteOptions, collections?: DiscoveryStore) {
   const router = Router();
   const admin = Router();
   const json = requireOriginAndJson(options.origins);
@@ -91,11 +92,20 @@ export function createDiscoveryRoutes(store: DiscoveryStore, identity: IdentityS
     response.json({ items });
   });
   router.get('/learning-paths', validateInput('query', searchQuery), listPublic(true));
-  router.get('/learning-paths/:slug', validateInput('params', pathSlug), validateLocale, async (_request, response) => {
-    const { slug } = response.locals.validated.params as { slug: string };
-    const { language } = response.locals.validated.query as { language?: string };
-    response.json({ item: await store.publicPath(slug, language) });
-  });
+  function groupDetail(path: string, groups: DiscoveryStore) {
+    router.get(path + '/:slug', validateInput('params', pathSlug), validateLocale, async (_request, response) => {
+      const { slug } = response.locals.validated.params as { slug: string };
+      const { language } = response.locals.validated.query as { language?: string };
+      response.json({ item: await groups.publicPath(slug, language) });
+    });
+  }
+  groupDetail('/learning-paths', store);
+  if (collections) {
+    router.get('/collections', validateInput('query', collectionList), async (_request, response) => {
+      response.json(await collections.publicCollections(response.locals.validated.query));
+    });
+    groupDetail('/collections', collections);
+  }
   router.get('/daily-learning', validateLocale, async (_request, response) => {
     const { language } = response.locals.validated.query as { language?: string };
     response.json(await store.daily(language));
@@ -108,41 +118,45 @@ export function createDiscoveryRoutes(store: DiscoveryStore, identity: IdentityS
 
   admin.use(requireSecureTransport(options.production), loadIdentity(identity, sessionCookie(options.production).name),
     requirePermission(administrationPermission), requirePermission(discoveryManagePermission));
-  admin.get('/paths', validateInput('query', pathList), async (_request, response) => {
-    response.json(await store.adminPaths(response.locals.validated.query as PathListQuery));
-  });
-  admin.get('/paths/:id', validateId, async (_request, response) => {
-    response.json({ item: await store.get(response.locals.validated.params.id as string) });
-  });
-  admin.post('/paths', json, validateInput('body', pathBody), async (_request, response) => {
-    const item = await store.create(response.locals.validated.body as PathInput);
-    audit('path:created', item.id, response.locals.identity);
-    response.status(201).json({ item });
-  });
-  admin.put('/paths/:id', json, validateId, validateInput('body', pathUpdate), async (_request, response) => {
-    const id = response.locals.validated.params.id as string;
-    const { version, ...input } = response.locals.validated.body as PathInput & { version: number };
-    const item = await store.update(id, input, version);
-    audit('path:updated', id, response.locals.identity);
-    response.json({ item });
-  });
-  admin.patch('/paths/:id/status', json, validateId, validateInput('body', pathStatus), (request, response, next) => {
-    const { status } = response.locals.validated.body as { status: EducationStatus };
-    if (status === 'approved' || status === 'published' || status === 'archived') return publish(request, response, next);
-    next();
-  }, async (_request, response) => {
-    const id = response.locals.validated.params.id as string;
-    const { status, version } = response.locals.validated.body as { status: EducationStatus; version: number };
-    const item = await store.changeStatus(id, status, version);
-    audit('path:' + status, id, response.locals.identity);
-    response.json({ item });
-  });
-  admin.delete('/paths/:id', json, validateId, validateInput('body', pathDeletion), async (_request, response) => {
-    const id = response.locals.validated.params.id as string;
-    await store.remove(id, (response.locals.validated.body as { version: number }).version);
-    audit('path:deleted', id, response.locals.identity);
-    response.status(204).end();
-  });
+  function mountGroups(base: string, kind: string, groups: DiscoveryStore) {
+    admin.get(base, validateInput('query', pathList), async (_request, response) => {
+      response.json(await groups.adminPaths(response.locals.validated.query as PathListQuery));
+    });
+    admin.get(base + '/:id', validateId, async (_request, response) => {
+      response.json({ item: await groups.get(response.locals.validated.params.id as string) });
+    });
+    admin.post(base, json, validateInput('body', pathBody), async (_request, response) => {
+      const item = await groups.create(response.locals.validated.body as PathInput);
+      audit(kind + ':created', item.id, response.locals.identity);
+      response.status(201).json({ item });
+    });
+    admin.put(base + '/:id', json, validateId, validateInput('body', pathUpdate), async (_request, response) => {
+      const id = response.locals.validated.params.id as string;
+      const { version, ...input } = response.locals.validated.body as PathInput & { version: number };
+      const item = await groups.update(id, input, version);
+      audit(kind + ':updated', id, response.locals.identity);
+      response.json({ item });
+    });
+    admin.patch(base + '/:id/status', json, validateId, validateInput('body', pathStatus), (request, response, next) => {
+      const { status } = response.locals.validated.body as { status: EducationStatus };
+      if (status === 'approved' || status === 'published' || status === 'archived') return publish(request, response, next);
+      next();
+    }, async (_request, response) => {
+      const id = response.locals.validated.params.id as string;
+      const { status, version } = response.locals.validated.body as { status: EducationStatus; version: number };
+      const item = await groups.changeStatus(id, status, version);
+      audit(kind + ':' + status, id, response.locals.identity);
+      response.json({ item });
+    });
+    admin.delete(base + '/:id', json, validateId, validateInput('body', pathDeletion), async (_request, response) => {
+      const id = response.locals.validated.params.id as string;
+      await groups.remove(id, (response.locals.validated.body as { version: number }).version);
+      audit(kind + ':deleted', id, response.locals.identity);
+      response.status(204).end();
+    });
+  }
+  mountGroups('/paths', 'path', store);
+  if (collections) mountGroups('/collections', 'collection', collections);
   admin.get('/daily-learning', async (_request, response) => {
     const settings = await store.dailySettings();
     response.json({ settings, previews: await store.activityPreviews(settings.activities) });
