@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.log
+storage/
+# Local reference material is kept outside the distributed application.
+/How the complete website should look/
