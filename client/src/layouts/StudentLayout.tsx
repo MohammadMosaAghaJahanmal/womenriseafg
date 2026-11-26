@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { usePreferences } from '../preferences';
 import { languageNames } from '../i18n';
+import { sectionPath } from '../pages/routes';
 import './shellTranslations';
 import './shell.css';
 
@@ -16,14 +17,14 @@ type Destination = { to: string; label: string; icon: LucideIcon; upcoming?: boo
 const mainLinks: Destination[] = [
   { to: '/', label: 'home', icon: Home },
   { to: '/explore', label: 'explore', icon: Compass },
-  { to: '/account', label: 'account', icon: UserRound },
-];
-const plannedLinks: Destination[] = [
   { to: '/courses', label: 'courses', icon: BookOpen },
   { to: '/videos', label: 'videos', icon: Video },
   { to: '/shorts', label: 'shorts', icon: Film },
-  { to: '/library', label: 'library', icon: Library },
   { to: '/ai-learning', label: 'ai', icon: Sparkles },
+  { to: '/library', label: 'library', icon: Library },
+  { to: '/account', label: 'account', icon: UserRound },
+];
+const plannedLinks: Destination[] = [
   { to: '/learning-paths', label: 'paths', icon: Route },
   { to: '/saved', label: 'saved', icon: Bookmark },
   { to: '/my-learning', label: 'learning', icon: GraduationCap },
@@ -32,6 +33,7 @@ const plannedLinks: Destination[] = [
 const settingsLink: Destination = { to: '/settings', label: 'settings', icon: Settings };
 const allLinks: Destination[] = [...mainLinks, ...plannedLinks, settingsLink, { to: '/status', label: 'status', icon: Monitor }];
 const bottomLinks = ['/', '/courses', '/shorts', '/library', '/my-learning'].map(to => allLinks.find(link => link.to === to)!);
+const collections = new Set(['/courses', '/videos', '/shorts', '/ai-learning', '/library']);
 const themeIcons = { light: Sun, dark: Moon, system: Monitor } as const;
 
 function Brand({ onClick }: { onClick?: () => void }) {
@@ -67,6 +69,8 @@ function PreferenceFields({ full = false }: { full?: boolean }) {
 
 function Navigation({ id, onNavigate }: { id: string; onNavigate?: () => void }) {
   const { t } = useTranslation('shell');
+  const { pathname } = useLocation();
+  const current = sectionPath(pathname);
   return <nav aria-label={t('navigation')} id={id} className="shell-navigation">
     {[{ title: 'browse', links: mainLinks }, { title: 'upcoming', links: plannedLinks }].map(group =>
       <div className="shell-nav-group" key={group.title}>
@@ -74,8 +78,8 @@ function Navigation({ id, onNavigate }: { id: string; onNavigate?: () => void })
         <ul aria-labelledby={id + '-' + group.title}>
           {group.links.map(({ to, label, icon: Icon, upcoming }) => {
             const name = upcoming ? t('upcomingItem', { name: t(label) }) : t(label);
-            return <li key={to}><NavLink end to={to} title={name} aria-label={name} onClick={onNavigate}
-              className={({ isActive }) => 'shell-nav-link' + (isActive ? ' shell-active' : '')}>
+            return <li key={to}><NavLink end={!collections.has(to)} to={to} title={name} aria-label={name} onClick={onNavigate}
+              className={({ isActive }) => 'shell-nav-link' + (isActive || to === current ? ' shell-active' : '')}>
               <Icon size={18} strokeWidth={1.75} aria-hidden="true" /><span>{t(label)}</span>
             </NavLink></li>;
           })}
@@ -116,7 +120,7 @@ export default function StudentLayout() {
   const main = useRef<HTMLElement>(null);
   const bottomNav = useRef<HTMLElement>(null);
   const lastPath = useRef(location.pathname);
-  const current = allLinks.find(item => item.to === location.pathname);
+  const current = allLinks.find(item => item.to === sectionPath(location.pathname));
   const found = allLinks.filter(item => normalized(t(item.label)).includes(normalized(query)));
   const menuClose = () => menu.current?.close();
   const searchClose = () => search.current?.close();
@@ -217,9 +221,9 @@ export default function StudentLayout() {
       {bottomLinks.map(({ to, label, icon: Icon, upcoming }) => {
         const name = t(label === 'library' ? 'libraryShort' : label);
         const accessibleName = upcoming ? t('upcomingItem', { name }) : name;
-        return <NavLink key={to} end to={to} title={accessibleName}
+        return <NavLink key={to} end={!collections.has(to)} to={to} title={accessibleName}
           aria-label={accessibleName}
-          className={({ isActive }) => 'shell-tab' + (isActive ? ' shell-tab-active' : '')}>
+          className={({ isActive }) => 'shell-tab' + (isActive || to === current?.to ? ' shell-tab-active' : '')}>
           <Icon size={20} strokeWidth={1.8} aria-hidden="true" />
           <span>{name}</span>
         </NavLink>;

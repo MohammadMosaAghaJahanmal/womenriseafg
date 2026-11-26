@@ -4,5 +4,12 @@ const sections = new Map([
   ['/settings','settings'], ['/status','status'],
 ]);
 export function sectionLabel(path: string) {
-  return sections.get(path.replace(/\/+$/, ''));
+  return sections.get(sectionPath(path));
+}
+
+export function sectionPath(path: string) {
+  const route = path.replace(/\/+$/, '') || '/';
+  if (/^\/learn\/[^/]+\/[^/]+$/.test(route)) return '/courses';
+  if (/^\/library\/[^/]+(?:\/read)?$/.test(route)) return '/library';
+  return route.replace(/^(\/(?:courses|videos|shorts|ai-learning))\/[^/]+$/, '$1');
 }

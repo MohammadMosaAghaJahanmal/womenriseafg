@@ -35,7 +35,7 @@ function RecordTranslations({ record }: { record: EducationRecord }) {
   const { t, i18n } = useTranslation('education');
   return record.translations.length
     ? <span className="education-locales">{record.translations.map(item =>
-      <bdi dir="ltr" key={item.locale} aria-label={localeName(item.locale, i18n.language)}>{item.locale}</bdi>,
+      <bdi dir="ltr" key={item.locale} title={localeName(item.locale, i18n.language)}>{item.locale}</bdi>,
     )}</span>
     : <span>{t('noTranslations')}</span>;
 }
@@ -87,7 +87,7 @@ export function EducationList({ kind }: { kind: Kind }) {
   const query = (params.get('q') ?? '').slice(0, 120);
   const status = statuses.find(value => value === params.get('status'));
   const pageInput = Number(params.get('page')) || 1;
-  const page = Number.isSafeInteger(pageInput) ? Math.max(1, Math.min(pageInput, 10000)) : 1;
+  const page = Number.isSafeInteger(pageInput) ? Math.max(1, Math.min(pageInput, 100000)) : 1;
   const load = useCallback((signal: AbortSignal) => listEducation(kind, { q: query || undefined, status, page, pageSize: 10 }, signal), [kind, query, status, page]);
   const { result, reload } = useEducationData(load);
   const pages = result.status === 'ready' ? Math.max(1, Math.ceil(result.data.total / result.data.pageSize)) : 1;
@@ -123,10 +123,12 @@ export function EducationList({ kind }: { kind: Kind }) {
 
   const numeric = new Intl.NumberFormat(i18n.language);
   const matches = query || status;
+  const loadError = result.status === 'error' ? educationError(result.error, 'loadError') : undefined;
+  const mayAdd = loadError !== 'noAccess' && loadError !== 'sessionExpired';
   const message = (location.state as { message?: string } | null)?.message;
   return <div className="education-module">
     <EducationHeading kind={kind} title={t(kind)} details={t(kind + 'Hint')}>
-      <Button asChild><Link to={educationPath(kind) + '/new' + location.search}><Plus size={19} aria-hidden="true" />{t('add')}</Link></Button>
+      {mayAdd && <Button asChild><Link to={educationPath(kind) + '/new' + location.search}><Plus size={19} aria-hidden="true" />{t('add')}</Link></Button>}
     </EducationHeading>
     <EducationNavigation />
     {message === 'removed' && <p className="education-success" role="status">{t('removed')}</p>}
@@ -144,11 +146,11 @@ export function EducationList({ kind }: { kind: Kind }) {
       </form>
       <div aria-busy={result.status === 'loading'}>
         {result.status === 'loading' && <StatePanel kind="loading" title={t('loading')} />}
-        {result.status === 'error' && <StatePanel kind="error" title={t(educationError(result.error, 'loadError'))}>
+        {loadError && <StatePanel kind="error" title={t(loadError)}>
           <Button variant="secondary" onClick={reload}>{t('retry')}</Button>
         </StatePanel>}
         {result.status === 'ready' && (result.data.items.length > 0 ? <>
-          <p className="education-results" role="status">{t('resultCount', { amount: numeric.format(result.data.total) })}</p>
+          <p className="education-results" role="status">{t('resultCount', { count: result.data.total, amount: numeric.format(result.data.total) })}</p>
           <EducationTable kind={kind} records={result.data.items} />
           <Pagination page={page} pages={pages} label={t('pagination')} previous={t('previous')} next={t('next')}
             pageLabel={t('page', { page: numeric.format(page), pages: numeric.format(pages) })} onChange={selectPage} />

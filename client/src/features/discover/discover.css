@@ -170,7 +170,9 @@
 .discover-format strong { font-weight: 690; font-size: 1rem; }
 .discover-format__mark { flex: none; display: grid; place-items: center; inline-size: 2.65rem; block-size: 2.65rem; border-radius: .75rem; }
 .discover-format--courses .discover-format__mark { color: var(--art-math-line); background: var(--art-math-bg); }
+.discover-format--videos .discover-format__mark { color: var(--secondary); background: var(--secondary-soft); }
 .discover-format--shorts .discover-format__mark { color: var(--art-lang-line); background: var(--art-lang-bg); }
+.discover-format--ai .discover-format__mark { color: var(--primary); background: var(--primary-soft); }
 .discover-format--library .discover-format__mark { color: var(--art-science-line); background: var(--art-science-bg); }
 .discover-direction { flex: none; color: var(--muted); }
 [dir="rtl"] .discover-direction, [dir="rtl"] .discover-back svg { transform: scaleX(-1); }

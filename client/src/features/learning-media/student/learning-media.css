@@ -1,0 +1,136 @@
+.lm-page { --lm-gap: clamp(.8rem, 2vw, 1.25rem); }
+.lm-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); }
+.lm-cover { color: var(--primary); }
+.lm-item-tags .lm-origin-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+.lm-item, .lm-item-heading > div, .lm-item-layout, .lm-item-info, .lm-resource {
+  display: grid;
+  min-inline-size: 0;
+  align-content: start;
+  gap: var(--lm-gap);
+}
+.lm-item-heading {
+  display: grid;
+  gap: .75rem 1.25rem;
+  padding-block-end: var(--lm-gap);
+  border-block-end: 1px solid var(--line);
+}
+.lm-item-heading > div { gap: .45rem; }
+.lm-item-heading h1 { font-size: clamp(1.7rem, 3.6vw, 2.9rem); }
+.lm-item-heading .learn-prose { max-inline-size: 76ch; }
+.lm-item-heading .ui-field { min-inline-size: min(100%, 11rem); }
+.lm-item-media { min-inline-size: 0; }
+.lm-origin-note { display: flex; align-items: flex-start; gap: .55rem; color: var(--ink); font-size: .91rem; }
+.lm-origin-note svg { color: var(--primary); flex-shrink: 0; margin-block-start: .15em; }
+.lm-media-details dl { display: grid; gap: .65rem; }
+.lm-media-details dl > div {
+  display: grid;
+  grid-template-columns: minmax(5rem, 1fr) minmax(0, 1.35fr);
+  gap: .35rem .65rem;
+  padding-block: .4rem;
+  border-block-start: 1px solid var(--line);
+}
+.lm-media-details dt { color: var(--muted); font-size: .9rem; }
+.lm-media-details dd { font-size: .9rem; text-align: end; }
+.lm-related-links { display: grid; gap: .55rem; }
+.lm-related-links a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .2rem .65rem;
+  min-block-size: 44px;
+  padding: .6rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: .6rem;
+  color: var(--primary);
+  background: var(--surface-alt);
+}
+.lm-related-links a:hover { border-color: var(--primary); }
+.lm-related-links a small { grid-column: 1; color: var(--muted); }
+.lm-related-links a bdi { grid-column: 1; font-weight: 650; }
+.lm-related-links a svg { grid-column: 2; grid-row: 1 / 3; }
+.lm-resource > img { max-inline-size: 100%; max-block-size: 36rem; justify-self: center; border-radius: .55rem; }
+.lm-resource-text { display: grid; gap: .55rem; }
+.lm-resource-text pre { max-inline-size: 100%; margin: 0; font: inherit; }
+
+.lm-feed { gap: clamp(.65rem, 1.5vw, 1.1rem); }
+.lm-feed-header { display: flex; align-items: center; justify-content: space-between; gap: .65rem; }
+.lm-feed-header h1 { font-size: clamp(1.6rem, 3.6vw, 2.65rem); }
+.lm-feed-header p { margin-block-start: .35rem; color: var(--muted); }
+.lm-feed-header .learn-banner-icon { inline-size: clamp(2.65rem, 8vw, 4rem); border-radius: .75rem; }
+.lm-feed-header .learn-banner-icon svg { inline-size: clamp(1.4rem, 4vw, 2rem); }
+.lm-short-filters { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.lm-short-filters summary {
+  display: flex; align-items: center; gap: .55rem;
+  min-block-size: 44px; padding: .48rem .85rem; color: var(--primary); font-weight: 680;
+}
+.lm-short-filters summary svg:last-child { margin-inline-start: auto; }
+.lm-short-filters[open] summary svg:last-child { transform: rotate(180deg); }
+.lm-short-filters .lm-filters { border: 0; border-block-start: 1px solid var(--line); border-radius: 0; }
+.lm-short-filters .learn-facet-error { padding-inline: .85rem; }
+.lm-short-navigation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: .25rem .45rem;
+  min-inline-size: 0;
+}
+.lm-short-navigation .ui-btn {
+  min-inline-size: 0; min-block-size: 44px; padding-inline: .45rem; white-space: normal; text-align: center;
+}
+.lm-short-navigation .ui-btn[aria-disabled='true'] { color: var(--muted); background: var(--surface-alt); cursor: default; }
+.lm-short-navigation .ui-btn[aria-disabled='true']:hover { border-color: var(--line); }
+.lm-short-navigation svg { flex-shrink: 0; }
+.lm-short-navigation p { color: var(--muted); font-size: .86rem; text-align: center; }
+.lm-short-player { position: relative; display: grid; min-inline-size: 0; align-content: start; justify-items: center; gap: .7rem; }
+.lm-short-stage {
+  display: grid;
+  place-items: center;
+  inline-size: min(100%, 21rem);
+  inline-size: min(100%, 21rem, 36svh);
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: #151526;
+  color: #f4edff;
+  touch-action: pan-y pinch-zoom;
+}
+.lm-short-stage .lm-cover, .lm-short-stage video { inline-size: 100%; block-size: 100%; min-block-size: 0; object-fit: contain; }
+.lm-short-stage .lm-cover { aspect-ratio: auto; }
+.lm-short-stage video[hidden] { display: none; }
+.lm-short-stage video::cue { color: white; background: #111; }
+.lm-short-failure { padding: .85rem; text-align: center; }
+.lm-short-tools { display: flex; flex-wrap: wrap; justify-content: center; align-items: end; gap: .45rem .55rem; }
+.lm-short-tools .ui-btn { max-inline-size: 100%; min-block-size: 44px; white-space: normal; text-align: center; }
+.lm-short-tools .lm-short-start {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: clamp(4rem, 12svh, 7.5rem);
+  inline-size: max-content;
+  max-inline-size: calc(min(100%, 21rem, 36svh) - 1rem);
+  margin-inline: auto;
+  box-shadow: 0 .35rem 1rem #15152660;
+}
+.lm-short-tools .ui-field { inline-size: min(100%, 10.5rem); }
+.lm-short-tools select { min-block-size: 44px; }
+.lm-short-help { text-align: center; }
+
+@media (min-width: 650px) {
+  .lm-filters { grid-template-columns: minmax(9rem, 1.4fr) repeat(2, minmax(0, 1fr)); }
+  .lm-item-heading { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  .lm-short-navigation { grid-template-columns: max-content auto max-content; justify-content: start; gap: .75rem; }
+  .lm-short-navigation .ui-btn { padding-inline: .8rem; }
+}
+@media (min-width: 1120px) {
+  .lm-item-layout { grid-template-columns: minmax(0, 1fr) minmax(16rem, .51fr); }
+  .lm-item-short .lm-item-layout { grid-template-columns: minmax(0, 1fr) minmax(16rem, .85fr); }
+}
+@media (max-width: 365px) {
+  .lm-feed-header .learn-banner-icon, .lm-short-navigation .ui-btn svg { display: none; }
+}

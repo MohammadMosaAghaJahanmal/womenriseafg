@@ -1,7 +1,7 @@
 import {
   ArrowLeft, Atom, BookOpen, BookOpenText, ChevronDown, ChevronRight,
   CodeXml, GraduationCap, LibraryBig, MessageSquare, Monitor, MousePointer2,
-  PlaySquare, Ruler, TriangleRight,
+  PlaySquare, Ruler, Sparkles, TriangleRight, Video,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -66,7 +66,9 @@ function SubjectGrid({ heading: Heading = 'h3' }: { heading?: 'h2' | 'h3' }) {
 
 const formats = [
   { id: 'courses', to: '/courses', Icon: BookOpenText },
+  { id: 'videos', to: '/videos', Icon: Video },
   { id: 'shorts', to: '/shorts', Icon: PlaySquare },
+  { id: 'ai', to: '/ai-learning', Icon: Sparkles },
   { id: 'library', to: '/library', Icon: LibraryBig },
 ] as const;
 
@@ -94,7 +96,7 @@ export function HomePage() {
 
       <section className="discover-section" aria-labelledby="home-formats-heading">
         <div className="discover-section__heading">
-          <div><h2 id="home-formats-heading">{t('formats')}</h2><p>{t('formatsHint')}</p></div>
+          <div><h2 id="home-formats-heading">{t('formats')}</h2></div>
         </div>
         <div className="discover-formats">
           {formats.map(({ id, to, Icon }) => (

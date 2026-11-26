@@ -1,0 +1,101 @@
+import { FileText, Image } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
+import { Button, StatePanel } from '../../../components/ui/Primitives';
+import { fetchTranscript, fileUrl } from '../../courses/student/api';
+import { chooseTranslation, ContentLanguageSelect, learnerLanguageName, useContentLanguage } from '../../courses/student/components';
+import { LessonMedia, MediaActions, sizeLabel } from '../../courses/student/LessonMedia';
+import type { EducationRecord } from '../../education/api';
+import { useEducationData } from '../../education/useEducationData';
+import { loadCategories, readLearning, type Collection, type LearningDetail, type StudyMedia } from './api';
+import { BackToCollection, CollectionState, ItemTags, MediaDetails, RelatedLearning } from './Components';
+import { ShortPlayer } from './ShortPlayer';
+import { learningMediaNamespace } from './strings';
+
+function TextPreview({ media }: { media: StudyMedia }) {
+  const { t } = useTranslation(learningMediaNamespace);
+  const load = useCallback((signal: AbortSignal) => fetchTranscript(media.id, signal), [media.id]);
+  const { result, reload } = useEducationData(load);
+  if (result.status !== 'ready') {
+    return <CollectionState loading={result.status === 'loading'} error={result.status === 'error' ? result.error : undefined} retry={reload} />;
+  }
+  return <div className="lm-resource-text">
+    <pre className="learn-prose" dir="auto" lang={media.language ?? undefined}>{result.data.text}</pre>
+    {result.data.truncated && <p className="learn-muted">{t('truncated')}</p>}
+  </div>;
+}
+
+function ResourceMedia({ media, title }: { media: StudyMedia; title: string }) {
+  const { t } = useTranslation(learningMediaNamespace);
+  const [show, setShow] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const image = media.kind === 'image';
+  return <div className="learn-panel lm-resource">
+    {!show && <div className="learn-actions"><Button onClick={() => setShow(true)}>
+      {image ? <Image size={18} aria-hidden="true" /> : <FileText size={18} aria-hidden="true" />}
+      {t(image ? 'showImage' : 'readFile')}
+    </Button></div>}
+    {show && (image
+      ? failed ? <StatePanel kind="error" title={t('imageUnavailable')}>
+        <Button variant="secondary" onClick={() => setFailed(false)}>{t('retry')}</Button>
+      </StatePanel> : <img src={fileUrl(media.id)} alt={title} decoding="async" onError={() => setFailed(true)} />
+      : <TextPreview media={media} />)}
+    <MediaActions media={media} />
+  </div>;
+}
+
+type Step = -1 | 1;
+
+export function MediaArticle({ detail, categories, contentLanguage, feed, move }: {
+  detail: LearningDetail; categories: EducationRecord[]; contentLanguage?: string; feed?: boolean;
+  move?: (step: Step, fromKeyboard?: boolean) => void;
+}) {
+  const { t, i18n } = useTranslation(learningMediaNamespace);
+  const { item, media, related } = detail;
+  const language = useContentLanguage();
+  const preference = language.explicit ?? contentLanguage ?? language.preferred;
+  const translation = chooseTranslation(item.translations, preference);
+  const Heading = feed ? 'h2' : 'h1';
+  const short = item.kind === 'short';
+  const { kind } = media;
+  const playable = kind === 'video' || kind === 'audio' || kind === 'pdf';
+
+  return <article className={'lm-item' + (short ? ' lm-item-short' : '')}>
+    <header className="lm-item-heading">
+      <div>
+        <ItemTags item={item} categories={categories} />
+        <Heading lang={translation.locale} dir="auto">{translation.title}</Heading>
+        {translation.description && <p className="learn-prose" lang={translation.locale} dir="auto">{translation.description}</p>}
+        {language.explicit && language.explicit !== translation.locale && <p className="learn-muted">{t('fallback', { language: learnerLanguageName(translation.locale) })}</p>}
+      </div>
+      <ContentLanguageSelect label={t('language')} locales={item.translations.map(entry => entry.locale)}
+        selected={translation.locale} onSelect={language.setLanguage} />
+    </header>
+    <div className="lm-item-layout">
+      <div className="lm-item-media">
+        {short && kind === 'video' ? <ShortPlayer key={media.id} item={item} media={media} locale={translation.locale} move={move} />
+          : playable ? <LessonMedia key={media.id} media={media} kind={kind} locale={translation.locale} />
+            : <ResourceMedia key={media.id} media={media} title={translation.title} />}
+      </div>
+      <div className="lm-item-info">
+        <MediaDetails item={item} media={media} fileSize={short && media.sizeBytes != null ? sizeLabel(media.sizeBytes, i18n.language) : undefined} />
+        <RelatedLearning related={related} preferred={preference} language={language.explicit ?? contentLanguage} />
+      </div>
+    </div>
+  </article>;
+}
+
+export default function MediaDetailPage({ collection }: { collection: Collection }) {
+  const { slug = '' } = useParams();
+  const load = useCallback((signal: AbortSignal) => readLearning(collection, slug, signal), [collection, slug]);
+  const { result, reload } = useEducationData(load);
+  const { result: categories } = useEducationData(loadCategories);
+  return <div className="learn-page lm-page lm-detail">
+    <BackToCollection collection={collection} />
+    {result.status === 'ready' ? <MediaArticle key={result.data.item.id} detail={result.data}
+      categories={categories.status === 'ready' ? categories.data : []} />
+      : <CollectionState loading={result.status === 'loading'} error={result.status === 'error' ? result.error : undefined}
+        retry={reload} collection={collection} />}
+  </div>;
+}

@@ -4,6 +4,10 @@ import { loadSettings } from '../config/environment';
 import { isStrongPassword, isValidLogin, normalizeLogin } from '../modules/auth/credentials';
 import { hashPassword } from '../modules/auth/passwords';
 import { EducationMigrationError, migrateEducation } from '../modules/education/migration';
+import { MediaMigrationError, migrateMedia } from '../modules/media/migration';
+import { CourseMigrationError, migrateCourses } from '../modules/courses/migration';
+import { LearningMediaMigrationError, migrateLearningMedia } from '../modules/learning-media/migration';
+import { BookMigrationError, migrateBooks } from '../modules/books/migration';
 import { IdentityMigrationError, migrateIdentity } from './migration';
 import {
   AdministratorAlreadyInitializedError, AdministratorUnavailableError, createIdentityStore,
@@ -47,6 +51,10 @@ async function run(args: string[]) {
     if (command === 'migrate') {
       console.log(await migrateIdentity(db) ? 'Identity migration applied.' : 'Identity schema is current.');
       console.log(await migrateEducation(db) ? 'Education migration applied.' : 'Education schema is current.');
+      console.log(await migrateMedia(db) ? 'Media migration applied.' : 'Media schema is current.');
+      console.log(await migrateCourses(db) ? 'Course migration applied.' : 'Course schema is current.');
+      console.log(await migrateLearningMedia(db) ? 'Learning media migration applied.' : 'Learning media schema is current.');
+      console.log(await migrateBooks(db) ? 'Book migration applied.' : 'Book schema is current.');
       return;
     }
     const store = createIdentityStore(db);
@@ -70,7 +78,8 @@ void run(process.argv.slice(2)).catch(error => {
   if (error instanceof CommandError || error instanceof AdministratorAlreadyInitializedError ||
       error instanceof AdministratorUnavailableError || error instanceof DuplicateLoginError ||
       error instanceof IdentitySchemaUnavailableError || error instanceof IdentityMigrationError ||
-      error instanceof EducationMigrationError) {
+      error instanceof EducationMigrationError || error instanceof MediaMigrationError ||
+      error instanceof CourseMigrationError || error instanceof LearningMediaMigrationError || error instanceof BookMigrationError) {
     console.error(error.message);
   } else {
     console.error('Identity command failed. Check the database connection, permissions, and migration status.');

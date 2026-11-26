@@ -17,6 +17,8 @@ interface Environment {
   DB_PASSWORD: string;
   LOG_LEVEL: string;
   STORAGE_ROOT: string;
+  MEDIA_MAX_UPLOAD_BYTES: number;
+  SHORT_MAX_SECONDS: number;
   AUTH_PUBLIC_ORIGIN?: string;
   AUTH_TRUSTED_PROXY_IPS: string;
 }
@@ -36,6 +38,8 @@ const schema = Joi.object<Environment>({
   }),
   LOG_LEVEL: Joi.string().valid('silent', 'fatal', 'error', 'warn', 'info', 'debug', 'trace').default('info'),
   STORAGE_ROOT: Joi.string().trim().min(1).default('storage'),
+  MEDIA_MAX_UPLOAD_BYTES: Joi.number().integer().min(1024).max(2147483647).default(134217728),
+  SHORT_MAX_SECONDS: Joi.number().integer().min(1).max(600).default(90),
   AUTH_PUBLIC_ORIGIN: Joi.string().trim().empty(''),
   AUTH_TRUSTED_PROXY_IPS: Joi.string().trim().allow('').default(''),
 });
@@ -68,6 +72,10 @@ export function readSettings(env: NodeJS.ProcessEnv) {
   if (contains(clientPath, storageRoot) || contains(storageRoot, clientPath)) {
     throw new Error('Invalid environment settings: STORAGE_ROOT overlaps the client directory');
   }
+  const sourceFolders = ['server', 'docs', '.git', 'node_modules'].map(folder => path.join(projectRoot, folder));
+  if (sourceFolders.some(folder => contains(folder, storageRoot))) {
+    throw new Error('Invalid environment settings: STORAGE_ROOT overlaps a project source directory');
+  }
   const production = value.NODE_ENV === 'production';
   const origin = readAuthOrigin(value.AUTH_PUBLIC_ORIGIN, production);
   const trustedProxies = value.AUTH_TRUSTED_PROXY_IPS
@@ -85,6 +93,8 @@ export function readSettings(env: NodeJS.ProcessEnv) {
     port: value.PORT,
     logLevel: value.LOG_LEVEL,
     storageRoot,
+    mediaMaxUploadBytes: value.MEDIA_MAX_UPLOAD_BYTES,
+    shortMaxSeconds: value.SHORT_MAX_SECONDS,
     auth: { origins, trustedProxies },
     database: {
       host: value.DB_HOST,

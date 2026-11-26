@@ -8,6 +8,15 @@ import { createIdentityStore } from './identity/store';
 import { createAuthRoutes } from './modules/auth/routes';
 import { createEducationRoutes } from './modules/education/routes';
 import { createEducationStore } from './modules/education/store';
+import { createMediaFiles } from './modules/media/files';
+import { createMediaRoutes } from './modules/media/routes';
+import { createMediaStore } from './modules/media/store';
+import { createCourseRoutes } from './modules/courses/routes';
+import { createCourseStore } from './modules/courses/store';
+import { createLearningMediaRoutes } from './modules/learning-media/routes';
+import { createLearningMediaStore } from './modules/learning-media/store';
+import { createBookRoutes } from './modules/books/routes';
+import { createBookStore } from './modules/books/store';
 
 function start() {
   const settings = loadSettings();
@@ -18,6 +27,8 @@ function start() {
   const logger = pino({ level: settings.logLevel, base: undefined });
   const db = createDatabase(settings.database);
   const identity = createIdentityStore(db);
+  const media = createMediaStore(db);
+  const files = createMediaFiles(settings.storageRoot, settings.mediaMaxUploadBytes);
   const routeOptions = { origins: settings.auth.origins, production, logger };
   const app = createApp({
     production,
@@ -26,6 +37,12 @@ function start() {
     publicDirectory: production ? clientBuild : undefined,
     identityRoutes: createAuthRoutes(identity, routeOptions),
     educationRoutes: createEducationRoutes(createEducationStore(db), identity, routeOptions),
+    mediaRoutes: createMediaRoutes(media, files,
+      identity, { ...routeOptions, maxUploadBytes: settings.mediaMaxUploadBytes }),
+    courseRoutes: createCourseRoutes(createCourseStore(db), media, identity, routeOptions),
+    learningMediaRoutes: createLearningMediaRoutes(
+      createLearningMediaStore(db, { shortMaxSeconds: settings.shortMaxSeconds }), media, identity, routeOptions),
+    bookRoutes: createBookRoutes(createBookStore(db), media, files, identity, routeOptions),
     trustedProxies: settings.auth.trustedProxies,
   });
   const server = app.listen(settings.port, settings.host);

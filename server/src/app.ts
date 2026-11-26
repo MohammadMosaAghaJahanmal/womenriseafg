@@ -13,6 +13,10 @@ interface AppOptions {
   publicDirectory?: string;
   identityRoutes?: Router;
   educationRoutes?: Router;
+  mediaRoutes?: Router;
+  courseRoutes?: Router;
+  learningMediaRoutes?: Router;
+  bookRoutes?: Router;
   trustedProxies?: string[];
 }
 
@@ -54,13 +58,19 @@ export function createApp(options: AppOptions): Express {
     next();
   });
 
-  app.use('/api', (_request, response, next) => {
+  const parseJson = express.json({ limit: '32kb' });
+  app.use('/api', (request, response, next) => {
     response.set('Cache-Control', 'no-store');
-    next();
-  }, express.json({ limit: '32kb' }));
+    if (options.courseRoutes && /^\/v1\/admin\/courses(?:\/|$)/i.test(request.path)) return next();
+    parseJson(request, response, next);
+  });
   app.use('/api/v1', createHealthRoutes(options.checkDatabase));
   if (options.identityRoutes) app.use('/api/v1', options.identityRoutes);
   if (options.educationRoutes) app.use('/api/v1', options.educationRoutes);
+  if (options.mediaRoutes) app.use('/api/v1', options.mediaRoutes);
+  if (options.courseRoutes) app.use('/api/v1', options.courseRoutes);
+  if (options.learningMediaRoutes) app.use('/api/v1', options.learningMediaRoutes);
+  if (options.bookRoutes) app.use('/api/v1', options.bookRoutes);
   app.use('/api', notFound);
 
   if (options.publicDirectory) {

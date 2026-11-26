@@ -22,7 +22,7 @@ const publishedTranslation = `AND EXISTS (
 )`;
 const visibleCategory = `category.status = 'published'
 AND EXISTS (SELECT 1 FROM education_translations t WHERE t.entry_id = category.id ${publishedTranslation})`;
-const publiclyVisible = `AND e.status = 'published'
+export const publicEducationEntry = `AND e.status = 'published'
 AND (e.category_id IS NULL OR EXISTS (
   SELECT 1 FROM education_entries category
   WHERE category.id = e.category_id AND ${visibleCategory}
@@ -126,7 +126,7 @@ export function createEducationStore(db: Sequelize) {
       return db.transaction(async transaction => {
         const pattern = translatedSearchPattern(search);
         const conditions = `WHERE e.kind = $kind
-          ${publicOnly ? publiclyVisible : status ? 'AND e.status = $status' : ''}
+          ${publicOnly ? publicEducationEntry : status ? 'AND e.status = $status' : ''}
           ${pattern ? `AND (CONVERT(e.slug USING utf8mb4) LIKE $pattern ESCAPE '='
             OR LOWER(CONVERT(lang.locale USING utf8mb4)) LIKE $pattern ESCAPE '='
             OR EXISTS (SELECT 1 FROM education_translations t

@@ -1,17 +1,24 @@
 # womenriseafg
 
-womenriseafg is a free learning workspace for Afghan girls and women. Guests can explore four planned subject outlines and choose an interface language and appearance. Optional accounts use a username and password. Upcoming sections and demonstration content are labeled in the interface.
+womenriseafg is a free learning workspace for Afghan girls and women. Guests can browse published courses, videos, Shorts, reviewed AI learning resources and digital books, and choose an interface language and appearance. Optional accounts use a username and password. Upcoming sections and demonstration content are labeled in the interface.
 
 ## Pages
 
 | Address | What you can try |
 | --- | --- |
 | `/`, `/explore` | Browse the four subject areas and open a topic outline |
+| `/courses`, `/courses/:slug`, `/learn/:courseSlug/:lessonSlug` | Browse published courses, open the curriculum, and take free lessons as a guest |
+| `/videos`, `/shorts`, `/ai-learning` | Browse and open free educational videos, vertical Shorts and reviewed AI learning resources |
+| `/library`, `/library/:slug`, `/library/:slug/read` | Browse free books, check publication details, and read PDFs online or download when permitted |
 | `/settings` | Set the interface language and light, dark or system appearance |
 | `/status` | Run the Stage 1 public API connection check and retry after a failure |
 | `/register`, `/login`, `/account` | Create or sign in to an optional student account, review the current session, or sign out |
 | `/admin/login`, `/admin`, `/admin/components` | Sign in as an administrator and open the authorized workspace |
 | `/admin/education` | Browse and manage categories, subjects, education levels, grades, languages and tags |
+| `/admin/media` | Upload, preview, organize, publish and clean up local media assets |
+| `/admin/courses` | Build and order curricula, manage translations and resources, and publish reviewed courses |
+| `/admin/learning-media` | Prepare and review video, Short and AI resource entries for publication |
+| `/admin/books` | Upload or select book PDFs and covers, edit translations and publication details, and review books |
 | `/design-preview` | Open the public Stage 2 component gallery and try its local examples |
 
 Explicit language and theme choices are saved in browser storage and can be cleared in Settings. The sign-in cookie is managed separately, and Account includes a sign-out action for shared devices. The page search covers workspace navigation. The public gallery uses sample data.
@@ -35,7 +42,7 @@ The production entry, `app.js`, selects production mode and starts the compiled 
 
 ## Prepare the application database
 
-1. Set the environment for the intended database. Use a dedicated runtime account with SELECT, INSERT, UPDATE and DELETE on the identity and education tables. For the explicit migration, use an account that also has CREATE, ALTER, INDEX and REFERENCES on this schema. Stage 4 was tested with MySQL 8.0.31 and needs a server that enforces CHECK constraints.
+1. Set the environment for the intended database. Use a dedicated runtime account with SELECT, INSERT, UPDATE and DELETE on the application tables, including books and translations. For the explicit migration, use an account that also has CREATE, ALTER, INDEX and REFERENCES on this schema. The application was tested with MySQL 8.0.31 and needs a server that enforces CHECK constraints.
 2. Run `npm run build`, then `npm run db:migrate` using the migration account with at least two available MySQL connections. The migrations record their versions, check table definitions and apply additively. Keep a database backup before applying changes to an existing environment.
 3. Initialize the first super administrator once from a trusted shell. Run the bootstrap command and supply a unique passphrase through standard input. The same local operator workflow can recover an active administrator account and revoke all of its current sessions.
 
@@ -66,11 +73,11 @@ Use `auth:recover` in the same command to set a replacement passphrase. Username
 | `npm run dev` | Start the Vite and Express watch processes together |
 | `npm run lint` | Check workspace JavaScript and TypeScript |
 | `npm run typecheck` | Check TypeScript in both workspaces |
-| `npm test` | Run the foundation tests using Node's test runner |
+| `npm test` | Run the server regression suite using Node's test runner |
 | `npm run build` | Build both workspaces for production |
 | `npm start` | Serve the built application from Express |
 | `npm audit --omit=dev` | Review the installed runtime dependency tree for known advisories |
-| `npm run db:migrate` | Apply and verify identity and education migrations for the configured MySQL schema |
+| `npm run db:migrate` | Apply and verify identity, education, media, course, learning media and book migrations for the configured MySQL schema |
 | `npm run auth:bootstrap -- USERNAME` | Establish the first super administrator with a passphrase on standard input |
 | `npm run auth:recover -- USERNAME` | Replace an administrator's passphrase and revoke active sessions |
 | `npm run auth:purge-sessions` | Remove expired identity sessions |
@@ -86,7 +93,9 @@ The server loads the project-root `.env` once at startup and validates it with J
 | `DB_HOST`, `DB_PORT` | `127.0.0.1`, `3306` | MySQL TCP connection |
 | `DB_NAME`, `DB_USER` | `womenriseafg` for both | Pre-created schema and its application user |
 | `DB_PASSWORD` | Empty in development | Application user's password, required in production |
-| `STORAGE_ROOT` | `storage` | Private storage location for future media. Relative paths resolve from the repository root |
+| `STORAGE_ROOT` | `storage` | Private media storage. Relative paths resolve from the repository root |
+| `MEDIA_MAX_UPLOAD_BYTES` | `134217728` | Maximum bytes in one uploaded file. Match the provider's request body and upload timeout settings |
+| `SHORT_MAX_SECONDS` | `90` | Maximum measured length for a Short and its quality variants. Accepts whole seconds from 1 to 600 |
 | `LOG_LEVEL` | `info` | Structured server logging level |
 | `AUTH_PUBLIC_ORIGIN` | Local API and Vite origins | In production, set the exact browser-facing HTTPS origin with no trailing slash. Account writes remain unavailable without it |
 | `AUTH_TRUSTED_PROXY_IPS` | Empty | Comma-separated exact IP addresses of trusted HTTPS proxies. Configure these only after confirming the proxy overwrites forwarded headers |
@@ -106,7 +115,7 @@ Credential requests are limited to 20 per IP in 15 minutes within each Node work
 
 The administrator audit records successful sign-in, sign-out, bootstrap and recovery with an internal account ID. Keep the application and operator logs private. Use the configured log retention policy and the daily expired-session cleanup for the identity data.
 
-Run the MySQL integration tests only with a disposable loopback MySQL instance and a fresh schema with a name beginning `womenriseafg_test_`. Set `WOMENRISEAFG_IDENTITY_TEST=1` with the corresponding `DB_*` variables, then run `npm test`. Both suites apply migrations and create and remove test data.
+Run the MySQL integration tests only with a disposable loopback MySQL instance and a fresh schema with a name beginning `womenriseafg_test_`. Set `WOMENRISEAFG_IDENTITY_TEST=1` with the corresponding `DB_*` variables, then run `npm test`. Test files run sequentially because the integration suites share the schema and exercise database-wide media usage and cleanup. They apply migrations and create and remove test data.
 
 ## Educational organization
 
@@ -116,16 +125,60 @@ Use the education dashboard to search and filter lists, open an entry, edit its 
 
 List and edit APIs use `/api/v1/admin/education`. Requests require an administrator session and `education:manage`. Publication and archiving also require `education:publish`. Updates, status changes and deletes require the current record version returned by a read. Public taxonomy lists use `GET /api/v1/education/:kind` with optional `q`, `page` and `pageSize`. They return published entries with translations in published languages. Categorized subjects also require a publicly visible category. The administrator dashboard counts stored statuses.
 
+## Media library
+
+Migration `004-centralized-media` adds media assets, related files and content references. The Media library accepts H.264 MP4, MP3, AAC M4A, WAV, PNG, JPEG, WebP, PDF, WebVTT and UTF-8 text. Text and caption files are capped at 4 MiB. Image dimensions are capped at 16,000 pixels per side and 64 megapixels. The server checks the file bytes and records available dimensions and duration. Some MP3 and fragmented MP4 files report duration as unknown.
+
+Add a title, license and source for each file. Upload thumbnails, pre-encoded video versions, alternate audio, captions and transcripts as separate assets, then link them from the video or document. Uploading an identical file returns a conflict so it can be reused from the library. The server performs no transcoding. Prepare MP4 variants with H.264 and AAC locally, using a tool such as FFmpeg or HandBrake. Review the media and its rights before confirming publication.
+
+Admin requests use `/api/v1/admin/media` and require `media:manage` plus an administrator session. Publishing and archiving also require `media:publish`. Draft and archived bytes are available only to authorized staff. The public file route is `GET /api/v1/media/:id/file`. Supported streams offer byte ranges, and the public attachment/download response requires permission to download. As with other web players, streaming still sends bytes to the browser.
+
+Set `STORAGE_ROOT` to a canonical, writable directory outside the web document root. Upload staging and permanent objects stay on the same volume and require hard-link support. The dashboard shows media bytes tracked by MySQL and available space on the volume. The file system's free-space reading may differ from the hosting account's quota. Confirm the provider's disk, inode, bandwidth, proxy upload and time limits before enabling large uploads.
+
+The Unattached files filter lists unlinked drafts and archived assets. Review and confirm each deletion individually. The cleanup action retries files already marked for deletion and removes unregistered objects and temporary uploads after a 24-hour grace period. Published and linked assets have reference guards. Back up the MySQL schema and private media directory together before migrations or hosting changes.
+
 The lockfile pins Sequelize's transitive UUID library to the patched CommonJS-compatible 11.1.1 release. Use the pinned npm version when updating dependencies to preserve that override. Reassess it when Sequelize updates its dependency range.
+
+## Courses and lessons
+
+Use **Manage courses** in the administration dashboard to create a draft, add course translations, and build its curriculum. Give each lesson a unique code within the course. Chapters and lessons have independent translations. Use the reorder controls to set the reading order and attach published media for video, audio and PDF lessons. Text lessons need a body in a published content language. Add optional resources, a thumbnail, taxonomy and related courses from the existing libraries.
+
+Save the curriculum before moving it through educational review, optional translation review, approval and publication. Publishing makes the course and lessons freely available to guests. Archive a course to withdraw it. Return an approved or archived course to Draft before editing. Changing a published course or lesson code changes its public URL when it is republished. Draft and archived courses can be deleted after confirmation.
+
+The public catalog is at `/courses`, course details are at `/courses/:slug`, and lessons are at `/learn/:courseSlug/:lessonSlug`. Courses can be searched and filtered by subject, level and content language. Lesson navigation follows the saved curriculum order. Learners can choose a content language independently of the interface language and explicitly load streaming media or PDF previews. The application hosts the preview code and worker alongside the built client.
+
+Public APIs are under `/api/v1/courses`. The admin API under `/api/v1/admin/courses` requires an administrator session and `course:manage`. Publishing and archiving also require `course:publish`. Changes use version checks. Course creation and updates accept a curriculum JSON body up to 512 KiB after authorization and origin checks. One course can have up to 20 chapters and 100 lessons.
+
+Migration `005-course-learning` adds courses, chapters, lessons, translations, lesson resources, tags and related course links to the existing MySQL schema. Run the migration after building the server. Back up the database and private media directory together. Published courses guard referenced media against archive or deletion. Attachments use each media file's existing download permission.
+
+## Educational videos, Shorts and AI learning resources
+
+Prepare and encode media off-server. Upload finished local files through **Media library** and record their source, license and creator. Attach thumbnails, captions, transcripts, audio-only alternatives and pre-encoded quality versions in the library. For Shorts, use an upright H.264 MP4 with encoded dimensions near 9:16 and a measurable duration. Apply the same requirements to its quality variants. Use landscape or portrait assets for regular educational videos.
+
+Open **Educational media** to create a video, Short or AI learning resource, add translations, and optionally link a course and one of its lessons. Videos and Shorts need a published category and at least one description in a published language before approval. For AI-assisted or AI-generated content, record the tool and its contribution. AI resources can reuse local images, audio, PDFs, captions and transcripts. The guest collection shows the AI classification and tool. Preparation notes and review records are visible to staff.
+
+For a new draft file, attach it before submitting the entry for human review. The reviewer checks accuracy, suitability, accessibility and rights, then records a note on approval. Approval releases the file for publication in the media library. Publish its attached files first, then publish the primary file and the reviewed entry. Approval is bound to the selected file version. If the file is edited, return the entry to Draft and repeat review. Existing published files can be reused. Archiving an entry removes it from the catalogs. An independently published file follows its media library status.
+
+The APIs are under `/api/v1/videos`, `/api/v1/shorts`, `/api/v1/ai-learning` and `/api/v1/admin/learning-media`. Admin actions require an administrator session and `learning-media:manage`. Approval, publication and archiving also require `learning-media:publish`. Working with private files requires `media:manage`, and publishing files in the library requires `media:publish`. Migration `006-learning-media` adds learning media and translations, including review and AI provenance fields. The same-origin host serves playback and prepared quality versions.
+
+## Digital library
+
+Open **Book management** to create a book, upload or select its PDF and optional cover, and add the author, publisher, edition, year, language and taxonomy details. Set **PDF language** to the language of the actual file. Catalog titles and descriptions can have separate translations. Enter the source and rights on the PDF and cover in the media library. The PDF's **Allow public download** permission controls the library's download action.
+
+Submit the book for educational review and add a review note on approval. Approve first when working with a draft PDF or cover, publish the files in the Media library, then publish the book. Book approval is tied to both file versions. Return the book to Draft and review again if a file changes. Archiving withdraws the book catalog and reader routes. Independently published media follows its media library status.
+
+Guests can search by title or author and filter by category, PDF language and education level. **Read online** starts the local PDF viewer with page navigation, zoom, fit width, and fullscreen or an expanded view. The PDF and worker load upon opening the reader. The book file endpoint honors byte ranges so the viewer can fetch the pages it needs. A text alternative is available for pages with extractable text.
+
+The public endpoints are `/api/v1/books`, `/api/v1/books/:slug` and `/api/v1/books/:slug/file`. The last endpoint serves inline reading and checks download permission for `?download=true`. Staff endpoints under `/api/v1/admin/books` require an administrator session and `book:manage`. Approval, publication and archive additionally require `book:publish`. Draft file access requires `media:manage`. Migration `007-digital-library` adds books, translations and review metadata. Use the existing private disk storage and confirm that the host forwards byte ranges and supports the configured upload size and time limits.
 
 ## Repository guide
 
 - `client/src/` holds React Router layouts, shared theme and language preferences, semantic CSS tokens, UI primitives, subject discovery, administration previews and the API status view.
 - `client/public/` holds the local illustration, favicon and license notices. Vite bundles the Inter and Noto Sans Arabic webfonts with the application.
 - `server/src/` holds validated configuration, the MySQL connection factory, the Express application, versioned health routes, input validation, error handling and the process entry.
-- `server/tests/` contains foundation, identity and education regression tests.
+- `server/tests/` contains foundation, identity, education, media, course, learning media and book regression tests.
 - `docs/PROGRESS.md` records stage results and the current approval boundary.
 - `AGENTS.md` records the owner's stage rules.
 - `How the complete website should look/` holds the owner's original local references. The directory is excluded from Git and build artifacts.
 
-The next planned stage is Stage 5, centralized media management. It requires separate owner approval.
+The next planned stage is Stage 9, learning engagement and discovery. It requires separate owner approval.

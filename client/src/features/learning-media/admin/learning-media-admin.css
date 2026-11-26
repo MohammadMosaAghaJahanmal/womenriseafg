@@ -1,0 +1,33 @@
+.learning-media-filter { margin-block-end: 1rem; }
+.learning-media-file-panel { min-inline-size: 0; overflow-wrap: anywhere; }
+.learning-media-selected { display: grid; gap: .5rem; min-inline-size: 0; }
+.learning-media-selected p, .learning-media-selected dl { margin: 0; }
+.learning-media-selected p { color: var(--muted); }
+.learning-media-selected video, .learning-media-selected img {
+  display: block;
+  max-inline-size: 100%;
+  max-block-size: 24rem;
+  border-radius: .65rem;
+  background: var(--surface-alt);
+  object-fit: contain;
+}
+.learning-media-selected audio { max-inline-size: 100%; }
+.learning-media-admin-cover { inline-size: min(11rem, 100%); }
+.learning-media-asset-facts { min-inline-size: 0; overflow-wrap: anywhere; }
+.learning-media-asset-facts > div { display: grid; grid-template-columns: minmax(6rem, 2fr) minmax(0, 3fr); gap: .5rem; }
+.learning-media-asset-facts dt { color: var(--muted); }
+.learning-media-asset-facts dd { margin: 0; }
+.learning-media-editor .course-form-card > p { margin: 0; }
+.learning-media-review-note { white-space: pre-wrap; }
+.learning-media-review textarea {
+  inline-size: 100%;
+  min-block-size: 5rem;
+  resize: vertical;
+  border: 1px solid var(--control-line);
+  border-radius: .72rem;
+  background: var(--surface);
+  color: var(--ink);
+  padding: .55rem .7rem;
+  font: inherit;
+}
+.learning-media-picker-search { margin-block: .7rem; }

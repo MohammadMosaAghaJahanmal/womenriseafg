@@ -54,8 +54,9 @@ function prepareInput(kind: Kind, fields: Draft): { input: EducationInput } | { 
   }
   if (kind === 'languages') {
     try {
-      input.locale = new Intl.Locale(fields.locale.trim()).toString();
-      if (input.locale.length > 35) return { error: 'invalidLocale' };
+      const parsed = new Intl.Locale(fields.locale.trim());
+      if (parsed.toString() !== parsed.baseName || parsed.baseName.length > 35) return { error: 'invalidLocale' };
+      input.locale = parsed.baseName;
       input.direction = fields.direction;
     } catch { return { error: 'invalidLocale' }; }
   }
@@ -65,7 +66,7 @@ function prepareInput(kind: Kind, fields: Draft): { input: EducationInput } | { 
 function RecordEditor({ kind, data }: { kind: Kind; data: EditorData }) {
   const { t, i18n } = useTranslation('education');
   const navigate = useNavigate();
-  const { search } = useLocation();
+  const { search, state } = useLocation();
   const { languages, categories, canPublish } = data;
   const defaultLocale = languages.find(language => language.status !== 'archived' && language.locale === i18n.language)?.locale ??
     languages.find(language => language.status !== 'archived' && language.locale === 'en')?.locale ??
@@ -133,7 +134,7 @@ function RecordEditor({ kind, data }: { kind: Kind; data: EditorData }) {
 
   async function changeStatus(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!record || !nextStatus || busy || dirty) return;
+    if (!record || !nextStatus || busy || dirty || restrictedTransition(nextStatus)) return;
     setBusy('status');
     setError(undefined);
     setSuccess('');
@@ -164,9 +165,9 @@ function RecordEditor({ kind, data }: { kind: Kind; data: EditorData }) {
     }
   }
 
-  const { state } = useLocation();
   const message = success || ((state as { message?: string } | null)?.message === 'created' && !dirty && !error ? 'created' : '');
   const transitions = record ? statusTransitions[record.status] : [];
+  const restrictedTransition = (status: Status) => !canPublish && (status === 'published' || status === 'archived');
   return <div className="education-editor">
     {message && <p role="status" className="education-success">{t(message)}</p>}
     <Card className="education-edit-card">
@@ -242,16 +243,16 @@ function RecordEditor({ kind, data }: { kind: Kind; data: EditorData }) {
       <EducationStatus status={record.status} />
       <p className="education-note">{t('publishedOnly')}</p>
       {dirty && <p className="education-note">{t('saveBeforeStatus')}</p>}
-      {!canPublish && transitions.includes('published') && <p className="education-note">{t('publishPermission')}</p>}
+      {transitions.some(restrictedTransition) && <p className="education-note">{t('publishPermission')}</p>}
       <form className="education-status-form" onSubmit={changeStatus} aria-busy={busy === 'status'}>
         <SelectField label={t('nextStatus')} disabled={Boolean(busy) || dirty} value={nextStatus}
           onChange={event => setNextStatus(event.target.value as Status | '')}>
           <option value="">{t('chooseStatus')}</option>
-          {transitions.map(status => <option disabled={status === 'published' && !canPublish} value={status} key={status}>
+          {transitions.map(status => <option disabled={restrictedTransition(status)} value={status} key={status}>
             {t('status-' + status)}
           </option>)}
         </SelectField>
-        <Button type="submit" variant="secondary" disabled={Boolean(busy) || !nextStatus || dirty}>{t(busy === 'status' ? 'working' : 'changeStatus')}</Button>
+        <Button type="submit" variant="secondary" disabled={Boolean(busy) || !nextStatus || dirty || restrictedTransition(nextStatus)}>{t(busy === 'status' ? 'working' : 'changeStatus')}</Button>
       </form>
       {error?.area === 'status' && <p role="alert" className="education-error">{t(error.message)}</p>}
       <div className="education-delete">
