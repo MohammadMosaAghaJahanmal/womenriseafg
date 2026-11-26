@@ -6,6 +6,7 @@ import { useParams } from 'react-router-dom';
 import { Button, StatePanel } from '../../../components/ui/Primitives';
 import { BackLink, chooseTranslation, localizedNumber, useContentLanguage } from '../../courses/student/components';
 import { useEducationData } from '../../education/useEducationData';
+import { rememberResource, savedPosition, useLearning, type LearningResource } from '../../engagement/local';
 import { openPdf } from '../../pdf/openPdf';
 import { bookFile, bookPath, readBook, type PublicBook } from './api';
 import { LibraryBack, LibraryState } from './Components';
@@ -73,7 +74,7 @@ function PageCanvas({ pdf, page, width, factor, fit }: {
     {status === 'error' && <StatePanel kind="error" title={t('pageError')}>
       <Button variant="secondary" onClick={() => setAttempt(value => value + 1)}>{t('retry')}</Button>
     </StatePanel>}
-    <canvas hidden={status !== 'ready'} ref={canvas} role="img"
+    <canvas dir="ltr" hidden={status !== 'ready'} ref={canvas} role="img"
       aria-label={t('pdfPage', { page: localizedNumber(page, i18n.language) })} />
   </div>;
 }
@@ -128,7 +129,10 @@ function ReaderView({ book, title, titleLanguage, pdf }: {
   book: PublicBook; title: string; titleLanguage: string; pdf: PDFDocumentProxy;
 }) {
   const { t, i18n } = useTranslation(libraryNamespace);
-  const [page, setPage] = useState(1);
+  const resource: LearningResource = { kind: 'book', id: book.id, slug: book.slug, title, locale: titleLanguage };
+  const { enabled } = useLearning();
+  const { id: bookId, slug: bookSlug } = book;
+  const [page, setPage] = useState(() => Math.min(pdf.numPages, Math.max(1, savedPosition(resource)?.position ?? 1)));
   const [zoom, setZoom] = useState({ fit: true, step: 3 });
   const [width, setWidth] = useState(0);
   const [activeText, setActiveText] = useState<number | null>(null);
@@ -137,6 +141,10 @@ function ReaderView({ book, title, titleLanguage, pdf }: {
   const area = useRef<HTMLDivElement>(null);
   const reader = useRef<HTMLElement>(null);
   const help = useId();
+  useEffect(() => {
+    if (enabled) rememberResource({ kind: 'book', id: bookId, slug: bookSlug, title, locale: titleLanguage },
+      page, pdf.numPages, page === pdf.numPages);
+  }, [enabled, bookId, bookSlug, title, titleLanguage, page, pdf.numPages]);
 
   useEffect(() => {
     const target = area.current;

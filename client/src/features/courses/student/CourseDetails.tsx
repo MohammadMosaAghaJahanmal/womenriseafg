@@ -3,10 +3,11 @@ import { BookOpen, Clock3, FileText, GraduationCap, UserRound } from 'lucide-rea
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { useEducationData } from '../../education/useEducationData';
+import { CourseLearning } from '../../engagement/CourseLearning';
 import { findCourse, loadCourseFacts } from './api';
 import {
   BackLink, chooseTranslation, ContentLanguageSelect, CourseCard, CourseCover, Curriculum, FactName,
-  LearnerState, learnerLanguageName, lessonPath, localizedNumber, missingContentKey, StartLesson, useContentLanguage,
+  LearnerState, learnerLanguageName, lessonPath, localizedNumber, missingContentKey, useContentLanguage,
 } from './components';
 import { courseNamespace } from './strings';
 
@@ -26,7 +27,6 @@ export default function CourseDetails() {
   const { course, related } = result.data;
   const translation = chooseTranslation(course.translations, language.preferred);
   const lessons = course.chapters.flatMap(chapter => chapter.lessons);
-  const firstLesson = lessons[0];
   const resourceLessons = lessons.filter(lesson => lesson.resourceLabels?.length);
   const { subjects, levels, grades } = facts.status === 'ready' ? facts.data : { subjects: [], levels: [], grades: [] };
   const subject = subjects.some(record => record.id === course.subjectId);
@@ -41,7 +41,7 @@ export default function CourseDetails() {
         <div className="learn-card-tags"><span>{t('free')}</span>{subject && <span><FactName records={subjects} id={course.subjectId} /></span>}</div>
         <h1 lang={translation.locale} dir="auto">{translation.title}</h1>
         {translation.description && <p className="learn-prose" lang={translation.locale} dir="auto">{translation.description}</p>}
-        {firstLesson && <div className="learn-actions"><StartLesson slug={course.slug} lesson={firstLesson.slug} language={language.explicit} /></div>}
+        <CourseLearning course={course} title={translation.title} locale={translation.locale} language={language.explicit} />
       </div>
       <CourseCover id={course.thumbnailId} />
     </header>

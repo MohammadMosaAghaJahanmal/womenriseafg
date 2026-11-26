@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, FileText } from 'lucide-r
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { useEducationData } from '../../education/useEducationData';
+import { LessonLearning } from '../../engagement/CourseLearning';
 import { findLesson, type LessonResponse } from './api';
 import {
   BackLink, chooseTranslation, ContentLanguageSelect, coursePath, Curriculum, LearnerState, learnerLanguageName,
@@ -70,6 +71,8 @@ export default function LessonPage() {
   const position = ordered.findIndex(item => item.id === lesson.id) + 1;
   const Icon = lessonIcons[lesson.kind];
   const lessonLocales = lesson.translations.map(item => item.locale);
+  const study = { kind: 'lesson' as const, id: lesson.id, slug: lesson.slug, parentSlug: course.slug,
+    title: translation.title, locale: translation.locale };
   return <div className="learn-page learn-lesson">
     <BackLink to={coursePath(course.slug, language.explicit)}><bdi lang={courseName.locale}>{courseName.title}</bdi></BackLink>
     <header className="learn-lesson-header">
@@ -88,7 +91,7 @@ export default function LessonPage() {
     <div className="learn-lesson-layout">
       <LessonCurriculum course={course} lesson={lesson} preference={language.preferred} explicit={language.explicit} />
       <div className="learn-lesson-content">
-        {lesson.kind !== 'text' && <LessonMedia key={lesson.id} media={media} kind={lesson.kind} locale={translation.locale} />}
+        {lesson.kind !== 'text' && <LessonMedia key={lesson.id} media={media} kind={lesson.kind} locale={translation.locale} study={study} />}
         {translation.body && <article className="learn-panel learn-article" lang={translation.locale}>
           {translation.body.split(/\r?\n[ \t]*\r?\n/).filter(Boolean).map((paragraph, index) =>
             <p className="learn-prose" dir="auto" key={index}>{paragraph}</p>)}
@@ -100,6 +103,7 @@ export default function LessonPage() {
             <MediaActions media={resource.media} compact />
           </li>)}</ul>
         </section>}
+        <LessonLearning course={course} item={study} />
         <LessonNavigation course={course} previous={previous} next={next} preference={language.preferred} explicit={language.explicit} />
       </div>
     </div>

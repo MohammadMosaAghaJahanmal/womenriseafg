@@ -400,3 +400,58 @@ Live cPanel and Passenger remain unverified. Local tests used Node 22.14.0, MySQ
 Stage 8 covers the digital library and requires separate approval.
 
 **STAGE 7 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**
+
+## Stage 8 — Digital library
+
+**Completed on 26 November 2026.** Staff can upload, review, and publish multilingual book listings. Guests can browse the library and read published books for free in the browser.
+
+### Implementation and user experience
+
+- The book manager provides search, filters, and pagination. Editors can upload a PDF or cover directly from the form or choose existing media, privately preview draft files, and set the author, publisher, edition, year, PDF language, category, education level, and school grade. The review workflow records approval before publication and supports archive and confirmed deletion.
+- The public library offers grid and list layouts, search by title or author, and filters by category, PDF language and education level. Book details include publication and licensing information, file size, and an explicit **Read online** action. The download action follows the PDF's media permission. Learners can select a description language separately from the interface and the PDF's language.
+- The reader loads PDF.js and the book only when opened. It renders one page at a time and supports sequential and direct page navigation, Arabic and Western page digits, zoom, actual size, fit width, fullscreen or an expanded view, and selectable page text where available. The zoomed page scrolls within the reading area. [PDF.js document-loading options](https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib.html)
+- The new screens reuse the existing mobile, RTL, light and dark design and media upload workflow. The course and AI resource previews use the same local PDF worker and retain their smaller preview interface. All 12 original design references matched their SHA-256 baseline.
+
+### Files and database
+
+| Area | Change |
+| --- | --- |
+| `server/src/modules/books/` | Sequelize models, Joi validation, multilingual catalog search, review lifecycle and book APIs |
+| `server/src/app.ts`, `server/src/index.ts`, `server/src/identity/cli.ts` | Mount the book routes, share the file streamer and include the Stage 8 migration |
+| `server/src/modules/media/` | Apply the existing education review hold to a linked draft PDF and cover |
+| `client/src/features/library/`, `client/src/App.tsx`, admin and learner shells, and discovery | Book editor and guest library, route links, translations and responsive styles |
+| `client/src/features/pdf/openPdf.ts`, `client/src/features/courses/student/PdfPreview.tsx` | Share the same local PDF.js worker and document-opening settings |
+| `server/tests/books.integration.test.ts`, `README.md`, `docs/PROGRESS.md` | Integration coverage, operator instructions and stage record |
+
+Migration `007-digital-library` adds InnoDB tables `books` and `book_translations` with 28 columns, 13 indexes and 17 constraints. These include two primary keys, one additional unique constraint, ten foreign keys and four checks. The migration grants `book:manage` and `book:publish` to the built-in administrator and super administrator roles. The existing media references table records the book's review holds and protects published files.
+
+### Security and privacy
+
+The server checks administrator session scope and `book:manage` for all staff endpoints. Approval, publication and archive also require `book:publish`. Draft file access requires `media:manage`. Writes use the existing origin and version checks. Approval records the reviewer, note and expected versions of the PDF and cover. The public catalog omits staff review fields and internal PDF IDs. The inline file route checks current book publication before serving a full, partial or conditional response. Attachment requests require the PDF's download grant. Guest reading requires no account, and reader position stays in memory while the reader is open.
+
+### Testing results
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck` and `git diff --check` | Passed |
+| `npm test` on disposable MySQL 8.0.31 | 21 passed, 0 failed, 0 skipped. Covered migration repeatability, normalized translations, rights and role checks, malformed upload rejection, PDF and cover review holds, re-review after a cover version change, publication, archive, inline and attachment headers, exact byte ranges, 416 responses and conditional requests |
+| `npm run build` | Both workspaces built. Vite reported the two existing upstream Zod annotation warnings and the size warning for the lazy PDF.js code |
+| `npm run dev` and compiled `node app.js` behind local HTTPS | Verified development proxy and direct routes, readiness, denied guest administration, no-store catalog metadata and refusal of insecure admin access. The migration CLI applied migration 007 to a fresh schema and reran successfully |
+| Local HTTPS Chrome publication and reading | Exercised real in-editor PDF upload, draft preview, cover selection, bilingual metadata, approval, publication, catalog filters, grid/list switching and authorized attachment bytes. Read a 1,641-byte, one-page guide and a 27,199,432-byte, 48-page workbook. Verified separate page controls, invalid page handling, localized page entry, zoom, fit width, fullscreen, page text, HTTP 403 for a restricted attachment and withdrawal on archive. The 51 initial workbook range responses totaled 3,672,008 bytes |
+| Live Chrome responsive and accessibility checks | 120 layout and direction checks across five routes, eight viewport sizes, and English, Pashto and Dari. All 30 automated WCAG axe scans reported zero violations. The production reader rendered both standard and embedded fonts under the same Content Security Policy |
+| Supplemental Chrome fixture checks | Guest fixture tests passed 96 responsive checks and 24 automated axe scans. Administrator fixture tests passed 72 responsive checks and 18 scans. All reported zero violations. Exercises included in-editor cover upload, fallback fullscreen, low-data browsing, and the existing course PDF preview |
+| `npm audit` and `npm audit --omit=dev` | Zero known vulnerabilities |
+
+The PDF skill's `pdfinfo` and Poppler render checks confirmed both fixtures' page counts and dimensions. The one-page guide and the workbook's first and last pages were visually inspected. A visual check found gaps in PDF lettering on an RTL page. Setting the canvas direction independently of the translated interface restored the letter placement in the guide, workbook and embedded-font samples. Verified the fix visually under the production policy.
+
+Test content and the database changes used isolated services. The services were stopped, temporary credentials cleared, and generated test documents removed.
+
+### Known issues and hosting
+
+Live cPanel, Passenger and cross-browser behavior remain unverified. The local test used Node 22.14.0, MySQL 8.0.31, Chrome and an HTTPS reverse proxy. Stage 8 uses the existing storage, upload limits and local PDF.js dependency. Hosting needs byte-range support and timeouts and request limits appropriate for the PDFs in the library. Text extraction depends on the document. The reader presents a read-only page view. Independently published files follow the media library's publication status after a book is archived. The existing administrator dialog library emits a browser warning for its blocked inline scroll-lock style. Dialog controls remained functional in Chrome. Native-speaker editorial review and manual assistive-technology checks remain outstanding.
+
+### Next recommended stage
+
+Stage 9 covers learning engagement and discovery and requires separate approval.
+
+**STAGE 8 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**

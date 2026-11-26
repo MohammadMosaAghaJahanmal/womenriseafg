@@ -3,6 +3,8 @@ import { Download, ExternalLink, FileText, Headphones, Play, Video } from 'lucid
 import { useTranslation } from 'react-i18next';
 import { Button, SelectField, StatePanel } from '../../../components/ui/Primitives';
 import { useEducationData } from '../../education/useEducationData';
+import type { LearningResource } from '../../engagement/local';
+import { usePlaybackProgress } from '../../engagement/playback';
 import { fetchTranscript, fileUrl, type PublicMedia } from './api';
 import { learnerLanguageName, lowDataConnection } from './components';
 import { courseNamespace } from './strings';
@@ -72,7 +74,7 @@ function Transcripts({ media, locale }: { media: PublicMedia; locale: string }) 
   </details>;
 }
 
-function Player({ media, locale }: { media: PublicMedia; locale: string }) {
+function Player({ media, locale, study }: { media: PublicMedia; locale: string; study?: LearningResource }) {
   const { t } = useTranslation(courseNamespace);
   const video = media.kind === 'video';
   const alternatives = media.links.filter(link => link.relation === 'audio');
@@ -87,6 +89,7 @@ function Player({ media, locale }: { media: PublicMedia; locale: string }) {
   const activeError = activeId === failed;
   const poster = media.links.find(link => link.relation === 'thumbnail');
   const captions = media.links.filter(link => link.relation === 'subtitle');
+  const progress = usePlaybackProgress(study);
 
   return <div className="learn-player">
     {video && (variants.length > 0 || alternatives.length > 0) && <div className="learn-playback-options">
@@ -112,7 +115,7 @@ function Player({ media, locale }: { media: PublicMedia; locale: string }) {
     </div>
     <div className="learn-player-stage" data-kind={active ?? media.kind}>
       {active && activeId && !activeError ? active === 'video'
-        ? <video key={activeId} controls playsInline preload="none" src={fileUrl(activeId)}
+        ? <video key={activeId} controls playsInline preload="none" src={fileUrl(activeId)} {...progress}
             poster={poster ? fileUrl(poster.assetId) : undefined} aria-label={media.title} onError={() => setFailed(activeId)}>
             {captions.map(link => <track key={link.assetId} kind="captions" src={fileUrl(link.assetId)} srcLang={link.slot}
               label={t('captions', { language: learnerLanguageName(link.slot) })} />)}
@@ -145,9 +148,11 @@ function PdfLesson({ media }: { media: PublicMedia }) {
   </div>;
 }
 
-export function LessonMedia({ media, kind, locale }: { media: PublicMedia | null; kind: 'audio' | 'video' | 'pdf'; locale: string }) {
+export function LessonMedia({ media, kind, locale, study }: {
+  media: PublicMedia | null; kind: 'audio' | 'video' | 'pdf'; locale: string; study?: LearningResource;
+}) {
   const { t } = useTranslation(courseNamespace);
   if (!media || media.kind !== kind) return <StatePanel kind="error" title={t('mediaUnavailable')} />;
   if (kind === 'pdf') return <PdfLesson media={media} />;
-  return <Player media={media} locale={locale} />;
+  return <Player media={media} locale={locale} study={study} />;
 }

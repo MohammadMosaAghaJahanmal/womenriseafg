@@ -42,7 +42,7 @@ function PdfPage({ document, page }: { document: PDFDocumentProxy; page: number 
   return <div className="learn-pdf-page">
     {status === 'loading' && <StatePanel kind="loading" title={t('loading')} />}
     {status === 'error' && <StatePanel kind="error" title={t('pdfError')} />}
-    <canvas ref={canvas} hidden={status !== 'ready'} role="img" aria-label={t('pdfPage', { page: localizedNumber(page, i18n.language) })} />
+    <canvas dir="ltr" ref={canvas} hidden={status !== 'ready'} role="img" aria-label={t('pdfPage', { page: localizedNumber(page, i18n.language) })} />
     {text && <details className="learn-transcripts">
       <summary>{t('pdfText')}</summary>
       <div><p className="learn-prose" dir="auto">{text}</p></div>

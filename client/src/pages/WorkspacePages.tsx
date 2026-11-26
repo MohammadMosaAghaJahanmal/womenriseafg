@@ -8,6 +8,7 @@ import { Badge, Button, Card, SelectField, StatePanel } from '../components/ui/P
 import { languageNames, languages, type Language } from '../i18n';
 import { usePreferences, type Theme } from '../preferences';
 import { checkApiHealth } from '../services/health';
+import { LearningPreference } from '../features/engagement/Preference';
 import './strings';
 import './workspace.css';
 import '../features/auth/auth.css';
@@ -42,6 +43,7 @@ export function SettingsPage() {
       <Button variant="secondary" onClick={() => setClearResult(clearPreferences())}>{t('auth:clearAction')}</Button>
       {clearResult !== undefined && <p role="status">{t(clearResult ? 'auth:cleared' : 'auth:unavailable')}</p>}
     </section>
+    <LearningPreference />
   </div>;
 }
 

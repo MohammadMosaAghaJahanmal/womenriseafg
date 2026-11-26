@@ -5,6 +5,7 @@ import { chooseTranslation, ContentLanguageSelect, useContentLanguage } from '..
 import { sizeLabel } from '../../courses/student/LessonMedia';
 import { preferredName, type EducationRecord } from '../../education/api';
 import { useEducationData } from '../../education/useEducationData';
+import { SaveResource } from '../../engagement/SaveResource';
 import { bookTaxonomy, readBook } from './api';
 import { BookCover, BookLanguage, BookReadActions, LibraryBack, LibraryState } from './Components';
 import { libraryNamespace } from './strings';
@@ -52,6 +53,8 @@ export default function BookDetails() {
         <h1 lang={description.locale} dir="auto">{description.title}</h1>
         {book.author && <p><bdi>{book.author}</bdi></p>}
         <BookReadActions book={book} detailsLanguage={language.explicit} />
+        <div className="learning-actions"><SaveResource resource={{ kind: 'book', id: book.id, slug: book.slug,
+          title: description.title, locale: description.locale }} /></div>
       </div>
     </header>
     <div className="library-book-info">

@@ -17,7 +17,7 @@ const fromWithPdf = `FROM books b
   LEFT JOIN media_assets pdf ON pdf.id = b.pdf_id AND pdf.kind = 'pdf' AND pdf.status <> 'deleted'`;
 const from = `${fromWithPdf}
   LEFT JOIN media_assets cover ON cover.id = b.cover_id AND cover.kind = 'image' AND cover.status = 'published'`;
-const publicBook = `b.status = 'published' AND pdf.status = 'published'
+export const publicBook = `b.status = 'published' AND pdf.status = 'published'
   AND ${publishedLocale('b.content_language')}
   AND EXISTS (SELECT 1 FROM book_translations t WHERE t.book_id = b.id
     AND CHAR_LENGTH(TRIM(t.description)) > 0 AND ${publishedLocale('t.locale')})`;

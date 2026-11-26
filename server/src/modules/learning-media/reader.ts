@@ -23,7 +23,7 @@ const from = `FROM learning_media lm
 
 const visibleCategory = `SELECT e.id FROM education_entries e
   WHERE e.id = lm.category_id AND e.kind = 'categories' ${publicEducationEntry}`;
-const publicItem = `lm.status = 'published' AND asset.status = 'published'
+export const publicLearningMedia = `lm.status = 'published' AND asset.status = 'published'
   AND EXISTS (SELECT 1 FROM learning_media_translations t WHERE t.learning_media_id = lm.id
     AND LENGTH(TRIM(t.description)) > 0 AND ${publishedLocale('t.locale')})`;
 
@@ -38,7 +38,7 @@ function columns(publicOnly: boolean) {
 }
 
 function visibilityFilters({ kind, aiOnly }: Visibility, publicOnly: boolean) {
-  const predicates = [publicOnly ? publicItem : '1 = 1'];
+  const predicates = [publicOnly ? publicLearningMedia : '1 = 1'];
   if (kind) predicates.push('lm.kind = :kind');
   if (aiOnly) predicates.push("lm.ai_origin <> 'human'");
   return predicates;

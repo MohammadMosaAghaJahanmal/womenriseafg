@@ -4,14 +4,16 @@ import { useTranslation } from 'react-i18next';
 import { Button, SelectField } from '../../../components/ui/Primitives';
 import { fileUrl } from '../../courses/student/api';
 import { learnerLanguageName, lowDataConnection } from '../../courses/student/components';
+import type { LearningResource } from '../../engagement/local';
+import { usePlaybackProgress } from '../../engagement/playback';
 import type { LearningItem, StudyMedia } from './api';
 import { StudyThumbnail } from './Components';
 import { learningMediaNamespace } from './strings';
 
 type Step = -1 | 1;
 
-export function ShortPlayer({ item, media, locale, move }: {
-  item: LearningItem; media: StudyMedia; locale: string; move?: (step: Step, fromKeyboard?: boolean) => void;
+export function ShortPlayer({ item, media, locale, move, study }: {
+  item: LearningItem; media: StudyMedia; locale: string; move?: (step: Step, fromKeyboard?: boolean) => void; study?: LearningResource;
 }) {
   const { t, i18n } = useTranslation(learningMediaNamespace);
   const variants = media.links.filter(link => link.relation === 'video-variant')
@@ -29,6 +31,7 @@ export function ShortPlayer({ item, media, locale, move }: {
   const visible = useRef(true);
   const help = useId();
   const caption = selectedCaption ?? tracks.find(link => link.slot === locale)?.assetId ?? '';
+  const progress = usePlaybackProgress(study);
 
   useEffect(() => {
     const player = video.current;
@@ -122,12 +125,13 @@ export function ShortPlayer({ item, media, locale, move }: {
       aria-keyshortcuts={move ? 'ArrowUp ArrowDown' : undefined} onKeyDown={switchWithKeyboard}
       onPointerDown={startGesture} onPointerUp={finishGesture} onPointerCancel={() => { gesture.current = null; }}>
       {!loaded && <StudyThumbnail id={item.thumbnailId} kind="short" />}
-      <video ref={video} preload="none" playsInline aria-label={media.title} hidden={!loaded || error}
+      <video ref={video} preload="none" playsInline aria-label={media.title} hidden={!loaded || error} {...progress}
         onPlay={event => {
           if (!visible.current || document.hidden) event.currentTarget.pause();
           else setPlaying(true);
         }}
-        onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} onError={() => {
+        onPause={event => { progress.onPause(event); setPlaying(false); }}
+        onEnded={event => { progress.onEnded(event); setPlaying(false); }} onError={() => {
           if (video.current?.hasAttribute('src')) setError(true);
         }}>
         {loaded && tracks.map(track => <track key={track.assetId} data-asset={track.assetId} kind="captions"

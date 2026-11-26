@@ -1,0 +1,20 @@
+.learning-workspace { display: grid; gap: 1rem; }
+.learning-workspace > h1 { margin: 0; }
+.learning-actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; margin-block-start: .55rem; }
+.learning-action { display: inline-flex; flex-direction: column; gap: .2rem; max-inline-size: 100%; }
+.learning-action button { max-inline-size: 100%; white-space: normal; }
+.learning-preference p { margin-block: .45rem; max-inline-size: 55ch; }
+.learning-preference p[role=status] { color: var(--ink); font-weight: 650; }
+.learning-course-progress { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-block-start: .75rem; color: var(--ink-soft); }
+.learning-course-progress progress { inline-size: min(14rem, 100%); block-size: .75rem; accent-color: var(--primary); }
+.learning-resource-list { display: grid; gap: .55rem; list-style: none; padding: 0; margin-block: .7rem 0; }
+.learning-resource-list li { min-inline-size: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); }
+.learning-resource-list li > a { color: var(--ink); display: flex; gap: .65rem; justify-content: space-between; flex-wrap: wrap;
+  align-items: center; padding: .55rem .8rem; border-radius: inherit; overflow-wrap: anywhere; min-inline-size: 0; }
+.learning-resource-list li > a:hover { color: var(--primary); }
+.learning-resource-list li > a > span:first-child { display: grid; gap: .1rem; }
+.learning-resource-list small { color: var(--ink-soft); }
+.learning-saved-list li { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .7rem; padding-inline-end: .45rem; padding-block: .3rem; }
+.learning-saved-list li > a { flex: 1 1 12rem; }
+.learning-saved-list .learning-action { margin-inline-start: .65rem; }
+.learning-continue { margin-block: 1rem; }

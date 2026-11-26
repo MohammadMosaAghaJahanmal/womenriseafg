@@ -8,6 +8,8 @@ import { chooseTranslation, ContentLanguageSelect, learnerLanguageName, useConte
 import { LessonMedia, MediaActions, sizeLabel } from '../../courses/student/LessonMedia';
 import type { EducationRecord } from '../../education/api';
 import { useEducationData } from '../../education/useEducationData';
+import type { LearningResource } from '../../engagement/local';
+import { SaveResource } from '../../engagement/SaveResource';
 import { loadCategories, readLearning, type Collection, type LearningDetail, type StudyMedia } from './api';
 import { BackToCollection, CollectionState, ItemTags, MediaDetails, RelatedLearning } from './Components';
 import { ShortPlayer } from './ShortPlayer';
@@ -60,6 +62,8 @@ export function MediaArticle({ detail, categories, contentLanguage, feed, move }
   const short = item.kind === 'short';
   const { kind } = media;
   const playable = kind === 'video' || kind === 'audio' || kind === 'pdf';
+  const study: LearningResource = { kind: item.kind === 'resource' ? 'ai' : item.kind, id: item.id, slug: item.slug,
+    locale: translation.locale, title: translation.title };
 
   return <article className={'lm-item' + (short ? ' lm-item-short' : '')}>
     <header className="lm-item-heading">
@@ -67,6 +71,7 @@ export function MediaArticle({ detail, categories, contentLanguage, feed, move }
         <ItemTags item={item} categories={categories} />
         <Heading lang={translation.locale} dir="auto">{translation.title}</Heading>
         {translation.description && <p className="learn-prose" lang={translation.locale} dir="auto">{translation.description}</p>}
+        <div className="learning-actions"><SaveResource resource={study} /></div>
         {language.explicit && language.explicit !== translation.locale && <p className="learn-muted">{t('fallback', { language: learnerLanguageName(translation.locale) })}</p>}
       </div>
       <ContentLanguageSelect label={t('language')} locales={item.translations.map(entry => entry.locale)}
@@ -74,8 +79,8 @@ export function MediaArticle({ detail, categories, contentLanguage, feed, move }
     </header>
     <div className="lm-item-layout">
       <div className="lm-item-media">
-        {short && kind === 'video' ? <ShortPlayer key={media.id} item={item} media={media} locale={translation.locale} move={move} />
-          : playable ? <LessonMedia key={media.id} media={media} kind={kind} locale={translation.locale} />
+        {short && kind === 'video' ? <ShortPlayer key={media.id} item={item} media={media} locale={translation.locale} move={move} study={study} />
+          : playable ? <LessonMedia key={media.id} media={media} kind={kind} locale={translation.locale} study={study} />
             : <ResourceMedia key={media.id} media={media} title={translation.title} />}
       </div>
       <div className="lm-item-info">
