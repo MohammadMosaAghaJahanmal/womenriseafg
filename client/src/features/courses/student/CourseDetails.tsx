@@ -3,6 +3,7 @@ import { BookOpen, Clock3, FileText, GraduationCap, UserRound } from 'lucide-rea
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { useEducationData } from '../../education/useEducationData';
+import { Recommendations } from '../../discovery/Cards';
 import { CourseLearning } from '../../engagement/CourseLearning';
 import { findCourse, loadCourseFacts } from './api';
 import {
@@ -98,5 +99,6 @@ export default function CourseDetails() {
         {related.map(item => <CourseCard course={item} key={item.id} language={language.explicit} subjects={subjects} levels={levels} />)}
       </div>
     </section>}
+    <Recommendations kind="course" id={course.id} language={translation.locale} />
   </div>;
 }

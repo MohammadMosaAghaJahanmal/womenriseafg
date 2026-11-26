@@ -77,7 +77,7 @@ Use `auth:recover` in the same command to set a replacement passphrase. Username
 | `npm run build` | Build both workspaces for production |
 | `npm start` | Serve the built application from Express |
 | `npm audit --omit=dev` | Review the installed runtime dependency tree for known advisories |
-| `npm run db:migrate` | Apply and verify identity, education, media, course, learning media and book migrations for the configured MySQL schema |
+| `npm run db:migrate` | Apply and verify identity, education, media, courses, learning media, books, quizzes, discovery and certificate migrations |
 | `npm run auth:bootstrap -- USERNAME` | Establish the first super administrator with a passphrase on standard input |
 | `npm run auth:recover -- USERNAME` | Replace an administrator's passphrase and revoke active sessions |
 | `npm run auth:purge-sessions` | Remove expired identity sessions |
@@ -171,14 +171,26 @@ Guests can search by title or author and filter by category, PDF language and ed
 
 The public endpoints are `/api/v1/books`, `/api/v1/books/:slug` and `/api/v1/books/:slug/file`. The last endpoint serves inline reading and checks download permission for `?download=true`. Staff endpoints under `/api/v1/admin/books` require an administrator session and `book:manage`. Approval, publication and archive additionally require `book:publish`. Draft file access requires `media:manage`. Migration `007-digital-library` adds books, translations and review metadata. Use the existing private disk storage and confirm that the host forwards byte ranges and supports the configured upload size and time limits.
 
+## Learning engagement and discovery
+
+Learners can open published content, take quizzes and follow learning paths as guests. **My learning** and **Settings** offer an explicit option to save progress in the current browser. **Turn off and clear** removes its lesson progress, reading and playback positions, bookmarks, recent activity and quiz result summaries. A shared browser can display this data to anyone who uses it. Clearing browser learning leaves any public certificate record previously issued in place.
+
+Use **Quiz management** to build quizzes from the reusable question bank. A question can contain translations, explanations and one or more correct selections, true or false, or accepted short answers. Use each option's same position and meaning across languages. To revise a question linked to a quiz, create a replacement and update the quiz in Draft. Submit quizzes for educational review and use translation review when applicable. The grading endpoint checks the published version and scores submitted answers on the server. It returns scores and explanations only after submission. The browser can save a score summary with consent.
+
+Use **Paths and Daily Learning** to publish ordered activities. Daily Learning can rotate through published activities, rotate through an editor's selected list, or be hidden. Rotation uses the Kabul calendar date. **Search** offers multilingual suggestions, content filters and pagination. Recommendations use the current activity's public subject and category, with level and grade as ranking signals. They use no learner history.
+
+After completing all currently published lessons in a course, a learner can prepare a free certificate and choose a template. The optional name stays on the certificate page. **Print or save as PDF** uses the browser's print dialog. Enabling public verification creates a record accessible by its unique link. The record contains the course, issuance date, locale and random identifier. Certificates describe self-reported lesson completion.
+
+Migrations `008-quizzes`, `009-discovery` and `010-certificates` extend the existing MySQL schema. Built-in administrators receive `quiz:manage`, `quiz:publish`, `discovery:manage` and `discovery:publish`. The service uses the existing MySQL 8 same-origin setup. Search uses indexed publication and reference checks with bounded result pages. It requires no external search service or worker. Run the migration CLI with a backup and confirm the provider's MySQL version and query limits before live deployment.
+
 ## Repository guide
 
 - `client/src/` holds React Router layouts, shared theme and language preferences, semantic CSS tokens, UI primitives, subject discovery, administration previews and the API status view.
 - `client/public/` holds the local illustration, favicon and license notices. Vite bundles the Inter and Noto Sans Arabic webfonts with the application.
 - `server/src/` holds validated configuration, the MySQL connection factory, the Express application, versioned health routes, input validation, error handling and the process entry.
-- `server/tests/` contains foundation, identity, education, media, course, learning media and book regression tests.
+- `server/tests/` contains foundation, identity, education, media, course, learning media, book and learning-engagement regression tests.
 - `docs/PROGRESS.md` records stage results and the current approval boundary.
 - `AGENTS.md` records the owner's stage rules.
 - `How the complete website should look/` holds the owner's original local references. The directory is excluded from Git and build artifacts.
 
-The next planned stage is Stage 9, learning engagement and discovery. It requires separate owner approval.
+The next planned stage is Stage 10, complete homepage and multilingual experience. It requires separate owner approval.

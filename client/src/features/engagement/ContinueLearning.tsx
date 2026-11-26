@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { learningKey, resourceUrl, useLearning, type LearningResource } from './local';
 import { learningNamespace } from './strings';
+import './engagement.css';
 
 export function ResourceList({ items, resume = false }: { items: LearningResource[]; resume?: boolean }) {
   const { t } = useTranslation(learningNamespace);

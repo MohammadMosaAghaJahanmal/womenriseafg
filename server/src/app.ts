@@ -17,6 +17,9 @@ interface AppOptions {
   courseRoutes?: Router;
   learningMediaRoutes?: Router;
   bookRoutes?: Router;
+  quizRoutes?: Router;
+  discoveryRoutes?: Router;
+  certificateRoutes?: Router;
   trustedProxies?: string[];
 }
 
@@ -59,9 +62,13 @@ export function createApp(options: AppOptions): Express {
   });
 
   const parseJson = express.json({ limit: '32kb' });
+  const parseCertificateJson = express.json({ limit: '96kb' });
   app.use('/api', (request, response, next) => {
     response.set('Cache-Control', 'no-store');
     if (options.courseRoutes && /^\/v1\/admin\/courses(?:\/|$)/i.test(request.path)) return next();
+    if (options.certificateRoutes && request.method === 'POST' && /^\/v1\/certificates\/?$/i.test(request.path)) {
+      return parseCertificateJson(request, response, next);
+    }
     parseJson(request, response, next);
   });
   app.use('/api/v1', createHealthRoutes(options.checkDatabase));
@@ -71,6 +78,9 @@ export function createApp(options: AppOptions): Express {
   if (options.courseRoutes) app.use('/api/v1', options.courseRoutes);
   if (options.learningMediaRoutes) app.use('/api/v1', options.learningMediaRoutes);
   if (options.bookRoutes) app.use('/api/v1', options.bookRoutes);
+  if (options.quizRoutes) app.use('/api/v1', options.quizRoutes);
+  if (options.discoveryRoutes) app.use('/api/v1', options.discoveryRoutes);
+  if (options.certificateRoutes) app.use('/api/v1', options.certificateRoutes);
   app.use('/api', notFound);
 
   if (options.publicDirectory) {

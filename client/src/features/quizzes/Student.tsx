@@ -6,7 +6,9 @@ import { Badge, Button, Card, InputField, Pagination, ProgressIndicator, StatePa
 import { authError, authStatus } from '../auth/api';
 import { BackLink, chooseTranslation, ContentLanguageSelect, learnerLanguageName, useContentLanguage } from '../courses/student/components';
 import { useEducationData } from '../education/useEducationData';
+import { Recommendations } from '../discovery/Cards';
 import { recordQuizResult } from '../engagement/local';
+import { SaveResource } from '../engagement/SaveResource';
 import { getPublishedQuiz, listPublishedQuizzes, quizPath, submitQuiz,
   type Answer, type PublicQuestion, type PublicQuiz, type QuizResult } from './api';
 import { quizNamespace as ns } from './strings';
@@ -27,14 +29,21 @@ export function QuizCatalog() {
   const [parameters, setParameters] = useSearchParams();
   const q = (parameters.get('q') ?? '').trim().slice(0, 120);
   const page = Math.min(10000, Math.max(1, Number.parseInt(parameters.get('page') ?? '', 10) || 1));
-  const load = useCallback((signal: AbortSignal) => listPublishedQuizzes({ q, page, pageSize: 12 }, signal), [q, page]);
+  const linkedCourse = parameters.get('courseId');
+  const courseId = linkedCourse && /^[a-f0-9-]{36}$/i.test(linkedCourse) ? linkedCourse : undefined;
+  const load = useCallback((signal: AbortSignal) => listPublishedQuizzes({ q, page, pageSize: 12, courseId }, signal), [q, page, courseId]);
   const { result, reload } = useEducationData(load);
   const number = new Intl.NumberFormat(i18n.language);
+
+  function update(query: string, next = 1) {
+    setParameters({ ...(courseId ? { courseId } : {}), ...(query ? { q: query } : {}),
+      ...(next > 1 ? { page: String(next) } : {}) });
+  }
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const query = String(new FormData(event.currentTarget).get('q') ?? '').trim();
-    setParameters(query ? { q: query } : {});
+    update(query);
   }
 
   return <div className="learn-page quiz-page">
@@ -44,7 +53,7 @@ export function QuizCatalog() {
     <form className="learn-search quiz-search" role="search" aria-label={t('search')} onSubmit={search}>
       <InputField type="search" label={t('search')} name="q" defaultValue={q} maxLength={120} key={q} />
       <Button type="submit">{t('searchAction')}</Button>
-      {q && <Button variant="ghost" onClick={() => setParameters({})}>{t('clear')}</Button>}
+      {q && <Button variant="ghost" onClick={() => update('')}>{t('clear')}</Button>}
     </form>
     {result.status !== 'ready' ? <QuizState error={result.status === 'error' ? result.error : undefined} retry={reload} />
       : <>
@@ -61,12 +70,12 @@ export function QuizCatalog() {
             </div>
           </Card>;
         })}</div> : <StatePanel kind="empty" title={t(q ? 'noMatches' : 'empty')}>
-          {page > 1 && <Button variant="secondary" onClick={() => setParameters(q ? { q } : {})}>{t('prev')}</Button>}
+          {page > 1 && <Button variant="secondary" onClick={() => update(q)}>{t('prev')}</Button>}
         </StatePanel>}
         {result.data.total > result.data.pageSize && <Pagination page={page} pages={Math.ceil(result.data.total / result.data.pageSize)}
           pageLabel={t('page', { page: number.format(page), total: number.format(Math.ceil(result.data.total / result.data.pageSize)) })}
           previous={t('prev')} next={t('next')} label={t('pages')}
-          onChange={next => setParameters({ ...(q ? { q } : {}), ...(next > 1 ? { page: String(next) } : {}) })} />}
+          onChange={next => update(q, next)} />}
       </>}
   </div>;
 }
@@ -152,7 +161,7 @@ function QuizAttempt({ quiz, reload }: { quiz: PublicQuiz; reload: () => void })
   const [completed, setCompleted] = useState<{ result: QuizResult; submitted: Answer[] }>();
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
-  const request = useRef<AbortController>();
+  const request = useRef<AbortController | undefined>(undefined);
   const questionHeading = useRef<HTMLHeadingElement>(null);
   const number = new Intl.NumberFormat(i18n.language);
   const answered = Object.values(answers).filter(isAnswered).length;
@@ -214,6 +223,7 @@ function QuizAttempt({ quiz, reload }: { quiz: PublicQuiz; reload: () => void })
       {!answered && !completed && !pending && <ContentLanguageSelect label={t('contentLanguage')}
         locales={quiz.translations.map(item => item.locale)} selected={copy.locale} onSelect={language.setLanguage} />}
     </header>
+    <SaveResource resource={{ kind: 'quiz', id: quiz.id, slug: quiz.slug, title: copy.title, locale: copy.locale }} />
     {completed ? <QuizResults quiz={quiz} result={completed.result} submitted={completed.submitted} retake={startAgain} />
       : !started ? <Button onClick={startAgain}><Play size={18} aria-hidden="true" />{t('start')}</Button>
         : <form className="quiz-attempt" onSubmit={submit}>
@@ -231,6 +241,7 @@ function QuizAttempt({ quiz, reload }: { quiz: PublicQuiz; reload: () => void })
             <CheckCircle2 size={18} aria-hidden="true" />{t(pending ? 'submitting' : 'submit')}
           </Button>
         </form>}
+    <Recommendations kind="quiz" id={quiz.id} language={copy.locale} />
   </>;
 }
 

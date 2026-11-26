@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
+import { ContinueLearning } from '../engagement/ContinueLearning';
+import { DailyLearning } from '../discovery/Cards';
 import './strings';
 import './discover.css';
 
@@ -87,6 +89,8 @@ export function HomePage() {
         </div>
       </header>
 
+      <ContinueLearning />
+      <DailyLearning compact />
       <section className="discover-section" aria-labelledby="home-subjects-heading">
         <div className="discover-section__heading">
           <div><h2 id="home-subjects-heading">{t('browse')}</h2><p>{t('browseHint')}</p></div>

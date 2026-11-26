@@ -39,8 +39,9 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
   return <div className={`ui-card ${className}`}>{children}</div>;
 }
 
-export function InputField({ label, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
-  const id = useId();
+export function InputField({ label, id: providedId, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  const generatedId = useId();
+  const id = providedId ?? generatedId;
   return <label className="ui-field" htmlFor={id}><span>{label}</span><span className="ui-input-wrap">{props.type === 'search' && <Search size={17} aria-hidden="true" />}<input {...props} id={id} /></span></label>;
 }
 

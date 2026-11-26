@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 export const learningStorageKey = 'womenriseafg.learning.v1';
 const maxList = 150;
-const maxRecords = 1000;
+const maxRecords = 4000;
 const resourceKinds = ['course', 'lesson', 'video', 'short', 'book', 'ai', 'quiz', 'path'] as const;
 const slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(120);
 const resourceSchema = z.object({
@@ -35,7 +35,7 @@ const empty: Learning = { enabled: false, saved: [], recent: [], completedLesson
 function read(): Learning {
   try {
     const value = localStorage.getItem(learningStorageKey);
-    if (!value || value.length > 350_000) return empty;
+    if (!value || value.length > 900_000) return empty;
     const parsed = learningSchema.safeParse(JSON.parse(value));
     return parsed.success ? parsed.data : empty;
   } catch { return empty; }

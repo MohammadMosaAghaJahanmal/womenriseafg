@@ -13,7 +13,7 @@ import { canonicalMediaLocale } from '../media/contract';
 const id = Joi.string().uuid({ version: 'uuidv4' });
 const issueInput = Joi.object({
   courseSlug: Joi.string().trim().lowercase().pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(120).required(),
-  completedLessonIds: Joi.array().items(id).min(1).max(100).unique().required(),
+  completedLessonIds: Joi.array().items(id).min(1).max(2000).unique().required(),
   publicVerification: Joi.boolean().default(false),
   locale: Joi.string().trim().max(35).custom((value: string, helpers) => canonicalMediaLocale(value) ?? helpers.error('any.invalid')).required(),
 }).required();

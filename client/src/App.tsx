@@ -3,6 +3,7 @@ import { Route, Routes, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import StudentLayout from './layouts/StudentLayout';
 import { HomePage, ExplorePage } from './features/discover/Discover';
+import { DailyLearning } from './features/discovery/Cards';
 import { sectionLabel } from './pages/routes';
 import './pages/strings';
 import './features/auth/strings';
@@ -22,6 +23,13 @@ const BookReader = lazy(() => import('./features/library/student/Reader'));
 const AccountPage = lazy(() => import('./features/auth/AuthPages').then(module => ({ default: module.AccountPage })));
 const LoginPage = lazy(() => import('./features/auth/AuthPages').then(module => ({ default: module.LoginPage })));
 const AdminGate = lazy(() => import('./features/auth/AuthPages').then(module => ({ default: module.AdminGate })));
+const LearningWorkspace = lazy(() => import('./features/engagement/Workspace'));
+const CourseCertificate = lazy(() => import('./features/engagement/Certificates').then(module => ({ default: module.CourseCertificate })));
+const VerifyCertificate = lazy(() => import('./features/engagement/Certificates').then(module => ({ default: module.VerifyCertificate })));
+const QuizCatalog = lazy(() => import('./features/quizzes/Student').then(module => ({ default: module.QuizCatalog })));
+const QuizDetail = lazy(() => import('./features/quizzes/Student').then(module => ({ default: module.QuizDetail })));
+const DiscoveryCatalog = lazy(() => import('./features/discovery/PublicDiscovery').then(module => ({ default: module.DiscoveryCatalog })));
+const LearningPath = lazy(() => import('./features/discovery/PublicDiscovery').then(module => ({ default: module.LearningPath })));
 
 export default function App() {
   const { pathname } = useLocation();
@@ -47,6 +55,16 @@ export default function App() {
       <Route path="explore" element={<ExplorePage />} />
       <Route path="courses" element={<Suspense fallback={loading}><CourseCatalog /></Suspense>} />
       <Route path="courses/:slug" element={<Suspense fallback={loading}><CourseDetails /></Suspense>} />
+      <Route path="courses/:slug/certificate" element={<Suspense fallback={loading}><CourseCertificate /></Suspense>} />
+      <Route path="certificates/verify/:code" element={<Suspense fallback={loading}><VerifyCertificate /></Suspense>} />
+      <Route path="my-learning" element={<Suspense fallback={loading}><LearningWorkspace /></Suspense>} />
+      <Route path="saved" element={<Suspense fallback={loading}><LearningWorkspace /></Suspense>} />
+      <Route path="quizzes" element={<Suspense fallback={loading}><QuizCatalog /></Suspense>} />
+      <Route path="quizzes/:slug" element={<Suspense fallback={loading}><QuizDetail /></Suspense>} />
+      <Route path="search" element={<Suspense fallback={loading}><DiscoveryCatalog /></Suspense>} />
+      <Route path="learning-paths" element={<Suspense fallback={loading}><DiscoveryCatalog paths /></Suspense>} />
+      <Route path="learning-paths/:slug" element={<Suspense fallback={loading}><LearningPath /></Suspense>} />
+      <Route path="daily-learning" element={<Suspense fallback={loading}><DailyLearning /></Suspense>} />
       <Route path="learn/:courseSlug/:lessonSlug" element={<Suspense fallback={loading}><LessonPage /></Suspense>} />
       <Route path="videos" element={<Suspense fallback={loading}><LearningMediaCatalog collection="videos" /></Suspense>} />
       <Route path="videos/:slug" element={<Suspense fallback={loading}><LearningMediaDetail collection="videos" /></Suspense>} />

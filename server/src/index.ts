@@ -17,6 +17,11 @@ import { createLearningMediaRoutes } from './modules/learning-media/routes';
 import { createLearningMediaStore } from './modules/learning-media/store';
 import { createBookRoutes } from './modules/books/routes';
 import { createBookStore } from './modules/books/store';
+import { createQuizRoutes } from './modules/quizzes/routes';
+import { createQuizStore } from './modules/quizzes/store';
+import { createDiscoveryRoutes } from './modules/discovery/routes';
+import { createDiscoveryStore } from './modules/discovery/store';
+import { createCertificateRoutes } from './modules/certificates/routes';
 
 function start() {
   const settings = loadSettings();
@@ -28,6 +33,7 @@ function start() {
   const db = createDatabase(settings.database);
   const identity = createIdentityStore(db);
   const media = createMediaStore(db);
+  const courses = createCourseStore(db);
   const files = createMediaFiles(settings.storageRoot, settings.mediaMaxUploadBytes);
   const routeOptions = { origins: settings.auth.origins, production, logger };
   const app = createApp({
@@ -39,10 +45,13 @@ function start() {
     educationRoutes: createEducationRoutes(createEducationStore(db), identity, routeOptions),
     mediaRoutes: createMediaRoutes(media, files,
       identity, { ...routeOptions, maxUploadBytes: settings.mediaMaxUploadBytes }),
-    courseRoutes: createCourseRoutes(createCourseStore(db), media, identity, routeOptions),
+    courseRoutes: createCourseRoutes(courses, media, identity, routeOptions),
     learningMediaRoutes: createLearningMediaRoutes(
       createLearningMediaStore(db, { shortMaxSeconds: settings.shortMaxSeconds }), media, identity, routeOptions),
     bookRoutes: createBookRoutes(createBookStore(db), media, files, identity, routeOptions),
+    quizRoutes: createQuizRoutes(createQuizStore(db), identity, routeOptions),
+    discoveryRoutes: createDiscoveryRoutes(createDiscoveryStore(db), identity, routeOptions),
+    certificateRoutes: createCertificateRoutes(db, courses, routeOptions),
     trustedProxies: settings.auth.trustedProxies,
   });
   const server = app.listen(settings.port, settings.host);

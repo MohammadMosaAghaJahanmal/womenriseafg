@@ -455,3 +455,62 @@ Live cPanel, Passenger and cross-browser behavior remain unverified. The local t
 Stage 9 covers learning engagement and discovery and requires separate approval.
 
 **STAGE 8 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**
+
+## Stage 9 — Learning engagement and discovery
+
+**Completed on 26 November 2026.** Guests can study published material, take a quiz, follow a learning path and browse recommendations. Saving progress on the device is optional.
+
+### Implementation and preserved functionality
+
+- **My learning**, **Saved resources** and **Settings** expose the opt-in and clear controls. The homepage shows resumable lessons, videos and reading when available and the configured Daily Learning activity. Course learners can see lesson completion and percentage, resume a lesson, and open its linked quizzes. Videos, Shorts and PDF reading retain their existing playback, permission and low-data controls.
+- Staff can write and translate reusable questions and explanations, attach and order them in quizzes, choose a passing score and move quizzes through review and publication. Guests receive scores and explanations after submission and can retake quizzes. Whole-number scores round down and multiple-answer questions require the complete correct set.
+- Free completion certificates require all currently published lessons. Learners can choose from two templates, enter an optional name, and print or save a PDF. Public verification is separately opt-in and uses a random receipt code.
+- Learning paths contain ordered courses, lessons, videos, Shorts, books or quizzes. A learner who enables device learning can see path progress. Staff can switch Daily Learning between automatic rotation, a curated rotation and off. Rotation uses the Kabul calendar date.
+- Global search covers published courses, lessons, videos, Shorts, books, AI learning, subjects, categories, paths and quizzes. It provides debounced suggestions, language and taxonomy filters, keyboard access and pagination. Related items use the source's published subject and category, with level and grade as ranking signals. The page does not use learner history for recommendations.
+- The new screens use the existing design system and the English, Pashto and Dari interface settings. All 12 original visual references match their SHA-256 baseline.
+
+### Files and database
+
+| Area | Changes |
+| --- | --- |
+| `client/src/features/engagement/` and the course, lesson, media and PDF reader entry points | Opt-in browser progress, bookmarks, history, resume controls and certificates |
+| `client/src/features/quizzes/`, `client/src/features/discovery/`, the homepage and both navigation shells | Staff and guest quizzes, paths, daily settings, search, related items and localized responsive UI |
+| `server/src/modules/quizzes/`, `server/src/modules/discovery/`, `server/src/modules/certificates/` | Validation, publication, scoring, MySQL search and receipt verification |
+| `server/src/app.ts`, `server/src/index.ts`, `server/src/identity/cli.ts` | Same-origin v1 API wiring and migration entry point |
+| `server/tests/engagement.test.ts`, `server/tests/engagement.integration.test.ts`, `README.md`, `docs/PROGRESS.md` | Regression coverage, setup and stage record |
+
+The CLI applies three additive migrations. `008-quizzes` adds eight tables for quizzes, the question bank, translations, answer keys and quiz ordering. `009-discovery` adds four tables for paths, translations, ordered activities and daily settings. `010-certificates` adds one table for opted-in verification receipts. The quiz and discovery migrations grant management and publication permissions to the built-in administrator roles. Learner progress, bookmarks and quiz attempts require no server tables.
+
+### Security and privacy
+
+Guest learning requires no account. The shared-device warning precedes opt-in. When enabled, this browser stores the completed lesson IDs, positions, bookmarks and quiz score summaries. The clear action removes these. Submitted answers go to the same-origin grader and are excluded from browser learning storage and application logs. Staff mutations use server-side permission, version and origin checks. Quiz answers are omitted from the public pre-attempt API. The certificate name stays in page memory. An optional verification record contains a code, course, locale and issuance timestamp, and the public API requires the exact code. Application API responses use `Cache-Control: no-store`.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck`, `git diff --check` | Passed |
+| `npm test` on isolated MySQL 8.0.31 | 26 passed, 0 failed, 0 skipped. Added tests for course completion set membership, scoring and passing thresholds, translated short answers, no answer disclosure before submission, role and origin checks, curriculum changes, search normalization and pagination, ordered paths, daily curation and certificate privacy |
+| `npm run build` | Both workspaces built. Vite reported upstream Zod annotation notices and large chunks for the application and the lazy PDF reader |
+| `npm run dev` and compiled `node app.js` behind a local HTTPS gateway | Vite served the search route and proxied readiness and search. The compiled application served the new deep links and v1 APIs. The migration CLI succeeded on a fresh fixture schema and reran successfully |
+| Chrome guest flow on local HTTPS | Exercised opt-in, lesson completion and resume, saved resources, video position, two-page PDF resume, quiz validation and retake, quiz summaries, path progress, Daily Learning, the global keyboard shortcut, suggestions, Dari search filters, empty search, certificate verification and local clearing. Simulated an API failure and verified the search loading state, error message and live retry. No runtime JavaScript errors or cross-origin requests appeared in that guest flow |
+| Chrome staff flow on local HTTPS | Created a bank question and a quiz through the editor, selected an existing question, created an ordered path from published content and changed Daily Learning settings |
+| Responsive and automated accessibility | 192 dark-mode combinations across eight routes, eight viewport sizes and all three interface locales. All 21 axe scans passed for the seven checked learner surfaces in English, Pashto and Dari |
+| Certificate print and PDF | Chrome exported both templates. Poppler and pypdf confirmed one landscape A4 page per template. The rendered pages and expected text were inspected, including the distinct verification label |
+| `npm audit --omit=dev` | Reported 0 known runtime vulnerabilities |
+
+An initial MySQL run exposed a reused Sequelize column definition during question creation and excessive search planning time. Corrected the model definitions and bounded the search statement's optimizer work. The full suite passed after the timed-out fixture query was closed. [MySQL optimizer hints](https://dev.mysql.com/doc/refman/8.4/en/optimizer-hints.html)
+
+Fixtures used separate integration and browser schemas. The development server, compiled app, HTTPS gateway and MySQL instance were stopped. The loopback ports were verified closed and temporary credentials and print fixtures were removed.
+
+### Hosting and limitations
+
+The stage uses Node 22.14.0, MySQL 8, same-origin hosting and the existing private storage model. It adds no runtime package or external service. Live cPanel and Passenger, production-volume search performance, cross-browser behavior, native-speaker review and manual assistive-technology testing remain unverified. Review the host's MySQL limits and apply the migration CLI with a backup before a future authorized deployment.
+
+Learning data is browser-specific. Clearing it leaves opted-in certificate verification records in place. Certificates document self-reported course completion using the date the receipt was issued. Printing and PDF saving use the browser.
+
+### Next stage
+
+Stage 10, complete homepage and multilingual experience, requires separate approval.
+
+**STAGE 9 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**

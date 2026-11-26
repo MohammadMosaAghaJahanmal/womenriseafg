@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type DialogHTMLAttributes } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowUpRight, Bookmark, BookOpen, BookOpenText, Check, ChevronDown, ChevronRight,
-  Compass, Download, Film, FolderSearch, Globe2, GraduationCap, Home, Library, Menu, Monitor,
+  Bookmark, BookOpen, BookOpenText, CalendarDays, ChevronDown, ChevronRight,
+  ClipboardList, Compass, Download, Film, Globe2, GraduationCap, Home, Library, Menu, Monitor,
   Moon, PanelLeftClose, PanelLeftOpen, Route, Search, Settings, Sparkles, Sun, UserRound, Video, X,
   type LucideIcon,
 } from 'lucide-react';
@@ -22,18 +22,20 @@ const mainLinks: Destination[] = [
   { to: '/shorts', label: 'shorts', icon: Film },
   { to: '/ai-learning', label: 'ai', icon: Sparkles },
   { to: '/library', label: 'library', icon: Library },
+  { to: '/quizzes', label: 'quizzes', icon: ClipboardList },
+  { to: '/learning-paths', label: 'paths', icon: Route },
+  { to: '/daily-learning', label: 'daily', icon: CalendarDays },
+  { to: '/saved', label: 'saved', icon: Bookmark },
+  { to: '/my-learning', label: 'learning', icon: GraduationCap },
   { to: '/account', label: 'account', icon: UserRound },
 ];
 const plannedLinks: Destination[] = [
-  { to: '/learning-paths', label: 'paths', icon: Route },
-  { to: '/saved', label: 'saved', icon: Bookmark },
-  { to: '/my-learning', label: 'learning', icon: GraduationCap },
   { to: '/downloads', label: 'downloads', icon: Download },
 ].map(item => ({ ...item, upcoming: true }));
 const settingsLink: Destination = { to: '/settings', label: 'settings', icon: Settings };
 const allLinks: Destination[] = [...mainLinks, ...plannedLinks, settingsLink, { to: '/status', label: 'status', icon: Monitor }];
 const bottomLinks = ['/', '/courses', '/shorts', '/library', '/my-learning'].map(to => allLinks.find(link => link.to === to)!);
-const collections = new Set(['/courses', '/videos', '/shorts', '/ai-learning', '/library']);
+const collections = new Set(['/courses', '/videos', '/shorts', '/ai-learning', '/library', '/quizzes', '/learning-paths']);
 const themeIcons = { light: Sun, dark: Moon, system: Monitor } as const;
 
 function Brand({ onClick }: { onClick?: () => void }) {
@@ -89,11 +91,6 @@ function Navigation({ id, onNavigate }: { id: string; onNavigate?: () => void })
   </nav>;
 }
 
-function normalized(text: string) {
-  return text.normalize('NFKC').toLowerCase().replace(/[\u064b-\u065f\u0670]/g, '')
-    .replace(/[يى]/g, 'ی').replace(/ك/g, 'ک').replace(/[ۀة]/g, 'ه').replace(/\u200c/g, ' ').trim();
-}
-
 const closeOnBackdrop: DialogHTMLAttributes<HTMLDialogElement>['onClick'] = event => {
   const dialog = event.currentTarget;
   if (event.target !== dialog) return;
@@ -112,36 +109,28 @@ const closeOnEscape: DialogHTMLAttributes<HTMLDialogElement>['onKeyDown'] = even
 export default function StudentLayout() {
   const { t } = useTranslation(['shell', 'auth']);
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
-  const [query, setQuery] = useState('');
   const menu = useRef<HTMLDialogElement>(null);
-  const search = useRef<HTMLDialogElement>(null);
-  const searchField = useRef<HTMLInputElement>(null);
   const main = useRef<HTMLElement>(null);
   const bottomNav = useRef<HTMLElement>(null);
   const lastPath = useRef(location.pathname);
   const current = allLinks.find(item => item.to === sectionPath(location.pathname));
-  const found = allLinks.filter(item => normalized(t(item.label)).includes(normalized(query)));
   const menuClose = () => menu.current?.close();
-  const searchClose = () => search.current?.close();
 
-  function openSearch() {
-    if (!search.current || search.current.open) return;
-    setQuery('');
-    search.current.showModal();
-    searchField.current?.focus();
-  }
   useEffect(() => {
     const shortcut = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !event.repeat) {
         event.preventDefault();
-        if (document.querySelector('dialog[open]')) return;
-        openSearch();
+        if (document.querySelector('dialog[open], [role="dialog"]')) return;
+        const input = document.getElementById('global-search-input');
+        if (location.pathname === '/search' && input) input.focus();
+        else void navigate('/search', { state: { focusSearch: true } });
       }
     };
     window.addEventListener('keydown', shortcut);
     return () => window.removeEventListener('keydown', shortcut);
-  }, []);
+  }, [location.pathname, navigate]);
   useEffect(() => {
     if (lastPath.current !== location.pathname) {
       lastPath.current = location.pathname;
@@ -194,15 +183,15 @@ export default function StudentLayout() {
       <header className="shell-header">
         <div className="shell-breadcrumb">
           <span>{t('academy')}</span><ChevronRight size={14} aria-hidden="true" />
-          <span>{t(current?.to === '/' ? 'overview' : current?.label ?? 'page')}</span>
+          <span>{t(current?.to === '/' ? 'overview' : current?.label ?? (location.pathname === '/search' ? 'search' : 'page'))}</span>
         </div>
         <div className="shell-header-brand"><Brand /></div>
         <div className="shell-tools">
-          <button type="button" className="shell-search-trigger" onClick={openSearch}
-            aria-label={t('search') + ' Ctrl K'} aria-haspopup="dialog" aria-keyshortcuts="Control+K Meta+K">
+          <Link to="/search" className="shell-search-trigger"
+            aria-label={t('search') + ' Ctrl K'} aria-keyshortcuts="Control+K Meta+K">
             <Search size={16} aria-hidden="true" /><span>{t('search')}{' '}</span>
             <kbd aria-hidden="true">Ctrl K</kbd>
-          </button>
+          </Link>
           <PreferenceFields />
           <button type="button" className="shell-icon-button shell-menu-trigger" onClick={() => menu.current?.showModal()}
             aria-controls="shell-mobile-menu" aria-haspopup="dialog" aria-label={t('openMenu')}><Menu size={21} /></button>
@@ -217,7 +206,6 @@ export default function StudentLayout() {
     </div>
 
     <nav ref={bottomNav} aria-label={t('primaryNav')} className="shell-bottom">
-      <span className="shell-bottom-caption" aria-hidden="true">{t('upcoming')}</span>
       {bottomLinks.map(({ to, label, icon: Icon, upcoming }) => {
         const name = t(label === 'library' ? 'libraryShort' : label);
         const accessibleName = upcoming ? t('upcomingItem', { name }) : name;
@@ -244,28 +232,5 @@ export default function StudentLayout() {
       </div>
     </dialog>
 
-    <dialog ref={search} className="shell-dialog shell-search-dialog" aria-labelledby="shell-search-title"
-      aria-describedby="shell-search-help" onClick={closeOnBackdrop} onKeyDown={closeOnEscape}>
-      <div className="shell-search-content">
-        <div className="shell-dialog-top"><h2 id="shell-search-title">{t('searchNav')}</h2>
-          <button type="button" className="shell-icon-button" aria-label={t('close')} onClick={searchClose}><X size={20} /></button></div>
-        <p id="shell-search-help" className="shell-search-help">{t('searchHint')}</p>
-        <label className="shell-search-field"><Search size={19} aria-hidden="true" />
-          <input ref={searchField} value={query} onChange={e => setQuery(e.target.value)} type="search"
-            aria-label={t('search')} placeholder={t('searchPlaceholder')} autoComplete="off" />
-        </label>
-        {found.length > 0 ? <div className="shell-search-list"><p className="shell-nav-heading">{t(query ? 'matches' : 'pages')}</p>
-          <ul>{found.map(({ to, label, icon: Icon, upcoming }) => <li key={to}>
-            <Link to={to} onClick={searchClose}>
-              <Icon size={17} aria-hidden="true" /><span>{t(label)}</span>
-              {upcoming && <small>{t('upcoming')}</small>}
-              {location.pathname === to ? <Check size={15} aria-hidden="true" /> : <ArrowUpRight size={15} aria-hidden="true" />}
-            </Link></li>)}</ul>
-          </div> :
-          <div className="shell-search-empty" role="status"><FolderSearch size={28} aria-hidden="true" />
-            <strong>{t('noResults')}</strong><span>{t('trySearch')}</span>
-          </div>}
-      </div>
-    </dialog>
   </div>;
 }

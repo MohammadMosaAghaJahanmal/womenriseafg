@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, FileText } from 'lucide-r
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { useEducationData } from '../../education/useEducationData';
+import { Recommendations } from '../../discovery/Cards';
 import { LessonLearning } from '../../engagement/CourseLearning';
 import { findLesson, type LessonResponse } from './api';
 import {
@@ -105,6 +106,7 @@ export default function LessonPage() {
         </section>}
         <LessonLearning course={course} item={study} />
         <LessonNavigation course={course} previous={previous} next={next} preference={language.preferred} explicit={language.explicit} />
+        <Recommendations kind="lesson" id={lesson.id} language={translation.locale} />
       </div>
     </div>
   </div>;

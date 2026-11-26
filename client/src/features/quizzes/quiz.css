@@ -1,0 +1,27 @@
+.quiz-page, .quiz-admin, .quiz-attempt, .quiz-results { display: grid; gap: 1.25rem; }
+.quiz-page, .quiz-admin { align-content: start; }
+.quiz-header, .quiz-meta, .quiz-attempt-progress { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.quiz-header { justify-content: space-between; }
+.quiz-header h1 { overflow-wrap: anywhere; }
+.quiz-header p { color: var(--muted-foreground); }
+.quiz-attempt-progress > :first-child { flex: 1 1 10rem; }
+.quiz-attempt fieldset { min-inline-size: 0; margin: 0; padding: 1rem; border: 1px solid var(--border); border-radius: 0.75rem; }
+.quiz-attempt legend { max-inline-size: 100%; padding-inline: 0.35rem; overflow-wrap: anywhere; }
+.quiz-option { display: flex; align-items: baseline; gap: 0.65rem; min-block-size: 2.75rem; }
+.quiz-option input { accent-color: var(--primary); }
+.quiz-options { padding-block-start: 0.4rem; }
+.quiz-question legend, .quiz-review-header h3 { font-weight: 650; }
+.quiz-question legend > span, .quiz-review-header h3 > span { display: block; color: var(--muted-foreground); font-size: 0.85em; }
+.quiz-page :is(input, textarea), .quiz-admin :is(input, textarea) { max-inline-size: 100%; }
+.quiz-attempt > button, .quiz-page > button { justify-self: start; }
+.quiz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 1rem; }
+.quiz-card { display: grid; gap: 0.65rem; align-content: start; }
+.quiz-card a { text-decoration: underline; text-underline-offset: 0.22em; }
+.quiz-score { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.quiz-score-summary { display: grid; }
+.quiz-score-summary > strong { font-size: 1.6rem; }
+.quiz-review-items { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem; }
+.quiz-review { border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; overflow-wrap: anywhere; }
+.quiz-review-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.quiz-review dl { display: grid; gap: 0.5rem; margin-block-start: 0.75rem; }
+.quiz-review dt { font-weight: 600; }

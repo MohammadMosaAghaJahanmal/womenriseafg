@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Layers3, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Activity, BookMarked, BookOpen, ChevronRight, Files, FolderTree, GraduationCap, LibraryBig, UserRound, Video } from 'lucide-react';
+import { Layers3, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Activity, BookMarked, BookOpen, ChevronRight, ClipboardCheck, Files, FolderTree, GraduationCap, LibraryBig, Route, UserRound, Video } from 'lucide-react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button, Card, PanelDialog, SelectField, StatePanel } from '../../components/ui/Primitives';
@@ -16,6 +16,9 @@ import { AdminBooks, matchBookRoute } from '../library/admin/AdminBooks';
 import { bookAdminPath } from '../library/admin/api';
 import { AdminMedia, matchMediaRoute } from '../media/AdminMedia';
 import { mediaPath } from '../media/api';
+import { AdminQuizzes } from '../quizzes/AdminQuizzes';
+import { quizAdminPath } from '../quizzes/api';
+import { AdminDiscovery, pathsAdminPath } from '../discovery/AdminDiscovery';
 import ComponentLibrary from './ComponentLibrary';
 import './strings';
 import './admin.css';
@@ -26,15 +29,17 @@ const destinations = [
   { to: courseAdminPath, label: 'courseAdmin:title', Icon: LibraryBig },
   { to: learningMediaAdminPath, label: 'learningMediaAdmin:title', Icon: Video },
   { to: bookAdminPath, label: 'bookAdmin:title', Icon: BookMarked },
+  { to: quizAdminPath, label: 'quiz:adminTitle', Icon: ClipboardCheck },
+  { to: pathsAdminPath, label: 'learningDiscovery:manage', Icon: Route },
   { to: mediaPath, label: 'media:title', Icon: Files },
   { to: '/admin/components', label: 'library', Icon: Layers3 },
   { to: '/status', label: 'service', Icon: Activity },
 ];
 
 function SidebarLinks({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
-  const { t } = useTranslation(['admin', 'auth', 'education', 'media', 'courseAdmin', 'learningMediaAdmin', 'bookAdmin']);
+  const { t } = useTranslation(['admin', 'auth', 'education', 'media', 'courseAdmin', 'learningMediaAdmin', 'bookAdmin', 'quiz', 'learningDiscovery']);
   return <nav className="admin-links" aria-label={t('nav')}>{destinations.map(({ to, label, Icon }) =>
-    <NavLink key={to} to={to} end={to !== educationPath() && to !== mediaPath && to !== courseAdminPath && to !== learningMediaAdminPath && to !== bookAdminPath}
+    <NavLink key={to} to={to} end={to === '/admin'}
       onClick={onNavigate} aria-label={collapsed ? t(label) : undefined} title={collapsed ? t(label) : undefined}>
       <Icon size={19} aria-hidden="true" /><span className={collapsed ? 'admin-sr' : undefined}>{t(label)}</span>
     </NavLink>)}
@@ -101,7 +106,7 @@ function Overview() {
 }
 
 export default function AdminPage() {
-  const { t } = useTranslation(['admin', 'education', 'media', 'courseAdmin', 'learningMediaAdmin', 'bookAdmin']);
+  const { t } = useTranslation(['admin', 'education', 'media', 'courseAdmin', 'learningMediaAdmin', 'bookAdmin', 'quiz', 'learningDiscovery']);
   const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
@@ -119,7 +124,10 @@ export default function AdminPage() {
   const courses = matchCourseRoute(route);
   const learningMedia = matchLearningMediaRoute(route);
   const books = matchBookRoute(route);
+  const quizzes = route === quizAdminPath || route.startsWith(quizAdminPath + '/');
+  const discovery = route.startsWith('/admin/discovery/');
   const page = route === '/admin' ? 'overview' : route === '/admin/components' ? 'library' :
+    quizzes ? 'quiz:adminTitle' : discovery ? 'learningDiscovery:manage' :
     books ? 'bookAdmin:title' : learningMedia ? 'learningMediaAdmin:title' : courses ? 'courseAdmin:title' : media ? 'media:title' :
       education ? 'education:' + ('kind' in education ? education.kind : 'title') : 'unknown';
   useEffect(() => { document.title = t(page) + ' · womenriseafg'; }, [t, page]);
@@ -150,7 +158,8 @@ export default function AdminPage() {
         <PreferenceFields />
       </header>
       <main className="admin-main" id="admin-main" tabIndex={-1} ref={main}>
-        {books ? <AdminBooks route={books} /> : learningMedia ? <AdminLearningMedia route={learningMedia} /> : courses ? <AdminCourses route={courses} /> :
+        {quizzes ? <AdminQuizzes route={route} /> : discovery ? <AdminDiscovery key={route} route={route} /> :
+          books ? <AdminBooks route={books} /> : learningMedia ? <AdminLearningMedia route={learningMedia} /> : courses ? <AdminCourses route={courses} /> :
           media ? <AdminMedia route={media} /> : education ? <AdminEducation route={education} /> : page === 'overview' ? <Overview /> : page === 'library' ? <ComponentLibrary /> :
           <><h1>{t('unknown')}</h1><StatePanel kind="empty" title={t('back')}><Button asChild><Link to="/admin">{t('overview')}</Link></Button></StatePanel></>}
       </main>

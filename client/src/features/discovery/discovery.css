@@ -1,0 +1,13 @@
+.discovery-page, .discovery-admin, .discovery-editor { display: grid; gap: 1.1rem; align-content: start; }
+.discovery-page h1, .discovery-page h2, .discovery-admin h1 { overflow-wrap: anywhere; }
+.discovery-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 0.75rem; }
+.discovery-field, .discovery-search { min-inline-size: 0; }
+.discovery-action, .discovery-page > button { justify-self: start; }
+.discovery-suggestions { margin-block-start: 0.5rem; }
+.discovery-heading { display: flex; align-items: start; flex-wrap: wrap; justify-content: space-between; gap: 1rem; }
+.discovery-heading p { color: var(--muted-foreground); }
+.discovery-ordered { list-style: decimal; padding-inline-start: 1.75rem; }
+.discovery-ordered > li { display: list-item; padding-inline-start: 0.5rem; }
+.discovery-ordered > li > a { display: flex; }
+.discovery-admin .discovery-translation { border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; margin: 0; min-inline-size: 0; }
+.discovery-editor textarea { resize: vertical; }

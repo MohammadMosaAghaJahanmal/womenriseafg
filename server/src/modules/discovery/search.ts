@@ -72,6 +72,7 @@ const branches: Branch[] = [
 type SearchFilter = Partial<Omit<SearchQuery, 'q' | 'page' | 'pageSize'>> & {
   normalized?: string;
   ids?: string[];
+  kinds?: DiscoverableKind[];
   activitiesOnly?: boolean;
 };
 type SearchRow = Omit<SearchEntry, 'href'> & {
@@ -84,6 +85,9 @@ type SearchRow = Omit<SearchEntry, 'href'> & {
   score: number;
   total?: string | number;
 };
+
+// Keep visibility checks indexed and avoid exhaustive planning across their nested joins.
+const select = "SELECT /*+ SET_VAR(optimizer_search_depth = 3) SET_VAR(optimizer_switch = 'semijoin=off') MAX_EXECUTION_TIME(4000) */";
 
 function searchHref({ kind, id, slug, parent }: SearchRow) {
   const value = encodeURIComponent(slug);
@@ -105,6 +109,7 @@ function projected(row: SearchRow): SearchEntry {
 function candidateQuery(filter: SearchFilter) {
   return branches.filter(branch =>
     (!filter.kind || branch.kinds.includes(filter.kind)) &&
+    (!filter.kinds || branch.kinds.some(kind => filter.kinds?.includes(kind))) &&
     (!filter.activitiesOnly || branch.kinds.some(kind => activityKinds.some(activity => activity === kind))))
     .map(branch => {
       const { kind, id, slug, parent, from, visibility } = branch;
@@ -163,12 +168,12 @@ export function discoverySearch(db: Sequelize) {
     const replacements = { ...parameters(filter, preference), offset, limit: query.pageSize };
     const base = queryBase(filter);
     const rows = await db.query<SearchRow>(`${base}
-      SELECT *, COUNT(*) OVER () AS total FROM ranked WHERE translation = 1
+      ${select} *, COUNT(*) OVER () AS total FROM ranked WHERE translation = 1
       ORDER BY score DESC, title, kind, id LIMIT :limit OFFSET :offset`,
     { type: QueryTypes.SELECT, replacements });
     let total = Number(rows[0]?.total ?? 0);
     if (!rows.length && offset > 0) {
-      const [value] = await db.query<{ total: number | string }>(`${base} SELECT COUNT(*) AS total FROM ranked WHERE translation = 1`,
+      const [value] = await db.query<{ total: number | string }>(`${base} ${select} COUNT(*) AS total FROM ranked WHERE translation = 1`,
         { type: QueryTypes.SELECT, replacements });
       total = Number(value?.total ?? 0);
     }
@@ -177,8 +182,9 @@ export function discoverySearch(db: Sequelize) {
 
   async function locate(references: { kind: DiscoverableKind; id: string }[], preference = 'en', transaction?: Transaction) {
     if (!references.length) return [];
-    const filter = { ids: [...new Set(references.map(entry => entry.id))], kind: new Set(references.map(entry => entry.kind)).size === 1 ? references[0]!.kind : undefined };
-    const rows = await db.query<SearchRow>(`${queryBase(filter)} SELECT * FROM ranked WHERE translation = 1`,
+    const kinds = [...new Set(references.map(entry => entry.kind))];
+    const filter = { ids: [...new Set(references.map(entry => entry.id))], kinds, kind: kinds.length === 1 ? kinds[0] : undefined };
+    const rows = await db.query<SearchRow>(`${queryBase(filter)} ${select} * FROM ranked WHERE translation = 1`,
       { type: QueryTypes.SELECT, replacements: parameters(filter, preference), transaction });
     const selected = new Map(rows.map(row => [row.kind + ':' + row.id, row]));
     return references.map(entry => selected.get(entry.kind + ':' + entry.id) ?? null);
@@ -195,7 +201,7 @@ export function discoverySearch(db: Sequelize) {
     if (!subjectId && !categoryId) return [];
     const filter = { activitiesOnly: true };
     const rows = await db.query<SearchRow>(`${queryBase(filter)}
-      SELECT * FROM ranked WHERE translation = 1 AND id <> :sourceId
+      ${select} * FROM ranked WHERE translation = 1 AND id <> :sourceId
       AND ((:subjectId IS NOT NULL AND subjectId = :subjectId) OR (:categoryId IS NOT NULL AND categoryId = :categoryId))
       ORDER BY (IF(subjectId = :subjectId, 8, 0) + IF(categoryId = :categoryId, 4, 0)
         + IF(levelId = :levelId, 2, 0) + IF(gradeId = :gradeId, 1, 0)) DESC, title, kind, id LIMIT 4`,
@@ -208,7 +214,7 @@ export function discoverySearch(db: Sequelize) {
     const rows = await db.query<SearchRow>(`${queryBase(filter)}, daily_rank AS (
       SELECT ranked.*, ROW_NUMBER() OVER (ORDER BY kind, id) AS dayRank, COUNT(*) OVER () AS total
         FROM ranked WHERE translation = 1 AND kind IN ('lesson','short','quiz','book','course','video')
-    ) SELECT * FROM daily_rank WHERE dayRank = MOD(:dayIndex, total) + 1`,
+    ) ${select} * FROM daily_rank WHERE dayRank = MOD(:dayIndex, total) + 1`,
       { type: QueryTypes.SELECT, replacements: { ...parameters(filter, preference), dayIndex } });
     return rows[0] ? projected(rows[0]) : null;
   }

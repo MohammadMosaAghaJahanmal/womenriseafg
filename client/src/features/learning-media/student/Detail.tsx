@@ -8,6 +8,7 @@ import { chooseTranslation, ContentLanguageSelect, learnerLanguageName, useConte
 import { LessonMedia, MediaActions, sizeLabel } from '../../courses/student/LessonMedia';
 import type { EducationRecord } from '../../education/api';
 import { useEducationData } from '../../education/useEducationData';
+import { Recommendations } from '../../discovery/Cards';
 import type { LearningResource } from '../../engagement/local';
 import { SaveResource } from '../../engagement/SaveResource';
 import { loadCategories, readLearning, type Collection, type LearningDetail, type StudyMedia } from './api';
@@ -86,6 +87,7 @@ export function MediaArticle({ detail, categories, contentLanguage, feed, move }
       <div className="lm-item-info">
         <MediaDetails item={item} media={media} fileSize={short && media.sizeBytes != null ? sizeLabel(media.sizeBytes, i18n.language) : undefined} />
         <RelatedLearning related={related} preferred={preference} language={language.explicit ?? contentLanguage} />
+        {!feed && <Recommendations kind={study.kind === 'ai' ? 'ai' : short ? 'short' : 'video'} id={item.id} language={translation.locale} />}
       </div>
     </div>
   </article>;

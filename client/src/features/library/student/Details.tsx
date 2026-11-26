@@ -5,6 +5,7 @@ import { chooseTranslation, ContentLanguageSelect, useContentLanguage } from '..
 import { sizeLabel } from '../../courses/student/LessonMedia';
 import { preferredName, type EducationRecord } from '../../education/api';
 import { useEducationData } from '../../education/useEducationData';
+import { Recommendations } from '../../discovery/Cards';
 import { SaveResource } from '../../engagement/SaveResource';
 import { bookTaxonomy, readBook } from './api';
 import { BookCover, BookLanguage, BookReadActions, LibraryBack, LibraryState } from './Components';
@@ -75,5 +76,6 @@ export default function BookDetails() {
         <dl>{fields.filter(field => field.value).map(({ key, value }) => <div key={key}><dt>{t(key)}</dt><dd>{value}</dd></div>)}</dl>
       </section>
     </div>
+    <Recommendations kind="book" id={book.id} language={description.locale} />
   </div>;
 }
