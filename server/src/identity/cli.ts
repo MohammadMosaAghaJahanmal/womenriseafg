@@ -3,7 +3,7 @@ import { createDatabase } from '../config/database';
 import { loadSettings } from '../config/environment';
 import { isStrongPassword, isValidLogin, normalizeLogin } from '../modules/auth/credentials';
 import { hashPassword } from '../modules/auth/passwords';
-import { migrateEducation } from '../modules/education/migration';
+import { EducationMigrationError, migrateEducation } from '../modules/education/migration';
 import { IdentityMigrationError, migrateIdentity } from './migration';
 import {
   AdministratorAlreadyInitializedError, AdministratorUnavailableError, createIdentityStore,
@@ -69,7 +69,8 @@ async function run(args: string[]) {
 void run(process.argv.slice(2)).catch(error => {
   if (error instanceof CommandError || error instanceof AdministratorAlreadyInitializedError ||
       error instanceof AdministratorUnavailableError || error instanceof DuplicateLoginError ||
-      error instanceof IdentitySchemaUnavailableError || error instanceof IdentityMigrationError) {
+      error instanceof IdentitySchemaUnavailableError || error instanceof IdentityMigrationError ||
+      error instanceof EducationMigrationError) {
     console.error(error.message);
   } else {
     console.error('Identity command failed. Check the database connection, permissions, and migration status.');

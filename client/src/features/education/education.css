@@ -1,0 +1,85 @@
+.education-module { display: grid; gap: 1.25rem; min-inline-size: 0; }
+.education-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.education-heading-copy { display: flex; align-items: flex-start; gap: .85rem; min-inline-size: 0; }
+.education-heading h1 { margin: .13rem 0 .3rem; font-size: clamp(1.8rem, 3.3vw, 3rem); line-height: 1.25; font-weight: 700; letter-spacing: -.035em; }
+.education-heading p, .education-family-head p, .education-note { color: var(--muted); line-height: 1.65; }
+.education-parent { color: var(--primary); font-size: .87rem; font-weight: 630; text-decoration: underline; text-underline-offset: .2em; }
+.education-mark { display: grid; place-content: center; flex: 0 0 auto; inline-size: 2.85rem; block-size: 2.85rem; border-radius: .8rem; color: var(--primary); background: var(--primary-soft); }
+.education-families { display: grid; gap: 1rem; margin-block-end: 1rem; }
+.education-family-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1rem; }
+.education-family-head h2, .education-edit-card h2, .education-workflow h2 { margin-block: 0 .25rem; color: var(--ink); font-size: 1.2rem; font-weight: 680; }
+.education-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: .85rem; }
+.education-family-card { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: .65rem .75rem; padding: 1rem; min-inline-size: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); box-shadow: var(--shadow); text-decoration: none; }
+.education-family-card:hover { border-color: var(--primary); }
+.education-family-card:nth-child(even) .education-mark { background: var(--secondary-soft); color: var(--secondary); }
+.education-family-copy { display: grid; gap: .2rem; }
+.education-family-copy strong { font-size: 1rem; font-weight: 670; }
+.education-family-copy > span { color: var(--muted); font-size: .875rem; line-height: 1.55; }
+.education-counts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .35rem .85rem; padding-block-start: .65rem; border-block-start: 1px solid var(--line); color: var(--subtle); font-size: .82rem; font-weight: 610; }
+.education-counts span:last-child { color: var(--success); }
+.admin-main > .education-families { margin-block-end: 2rem; }
+.education-nav { display: flex; flex-wrap: wrap; gap: .35rem; border-block-end: 1px solid var(--line); padding-block-end: .5rem; }
+.education-nav a { color: var(--muted); display: inline-flex; align-items: center; padding: .45rem .78rem; min-block-size: 44px; border-radius: .62rem; font-weight: 620; font-size: .89rem; text-decoration: none; }
+.education-nav a:hover { color: var(--ink); background: var(--surface-alt); }
+.education-nav a.active { color: var(--primary); background: var(--primary-soft); }
+.education-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(9rem, .45fr) auto; align-items: end; gap: .75rem; }
+.education-filter-actions, .education-form-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
+.education-list > div[aria-busy] { margin-block-start: 1rem; min-inline-size: 0; }
+.education-results { color: var(--muted); font-size: .875rem; margin-block: .6rem .45rem; }
+.education-table { border-collapse: collapse; inline-size: 100%; table-layout: fixed; margin-block: .25rem .8rem; overflow-wrap: anywhere; }
+.education-table th, .education-table td { padding: .65rem .55rem; text-align: start; border-block-end: 1px solid var(--line); }
+.education-table thead { background: var(--surface-alt); font-size: .875rem; color: var(--muted); }
+.education-table th:first-child { inline-size: 25%; }
+.education-table th:last-child { inline-size: 17%; }
+.education-name, .education-code { display: grid; gap: .15rem; }
+.education-name { color: var(--ink); font-weight: 630; }
+.education-code { color: var(--muted); font-size: .875rem; }
+.education-name small, .education-code small { color: var(--subtle); font-size: .77rem; font-weight: 480; }
+.education-locales { display: flex; flex-wrap: wrap; gap: .24rem; }
+.education-locales bdi { background: var(--surface-alt); color: var(--muted); border-radius: .35rem; padding: .2rem .4rem; font-size: .78rem; }
+.education-status { display: inline-block; max-inline-size: 100%; background: var(--surface-alt); color: var(--muted); border-radius: .48rem; padding: .24rem .5rem; font-size: .81rem; font-weight: 650; overflow-wrap: anywhere; }
+.education-status-published, .education-status-approved { background: var(--secondary-soft); color: var(--secondary); }
+.education-status-educational-review, .education-status-translation-review { background: var(--primary-soft); color: var(--primary); }
+.education-edit-link { color: var(--primary); padding-inline: .48rem; font-size: .875rem; text-align: start; }
+.education-rows { display: none; }
+.education-editor { min-inline-size: 0; display: grid; align-items: start; gap: 1rem; grid-template-columns: minmax(0, 1.65fr) minmax(15rem, 1fr); }
+.education-editor > .education-success { grid-column: 1 / -1; }
+.education-editor > .education-edit-card:only-of-type { grid-column: 1 / -1; }
+.education-workflow h2 { margin-block-end: .65rem; }
+.education-note { font-size: .875rem; margin-block: .35rem .65rem; }
+.education-fields, .education-translation-section { display: grid; gap: .65rem; min-inline-size: 0; }
+.education-fields:disabled { opacity: .83; }
+.education-fields > .education-note { margin: -.4rem 0 0; }
+.education-translation-section { border-block-start: 1px solid var(--line); padding-block-start: 1rem; margin-block-start: .55rem; }
+.education-translation-section h3 { font-weight: 660; }
+.education-translation-section > .education-note { margin: -.25rem 0 0; }
+.education-translation { display: grid; align-items: start; min-inline-size: 0; gap: .55rem; padding: .75rem; border: 1px solid var(--line); border-radius: .65rem; }
+.education-translation > legend { padding-inline: .35rem; color: var(--ink); font-weight: 620; font-size: .9rem; }
+.education-translation > .ui-btn { justify-self: start; padding-inline: .45rem; font-size: .875rem; }
+.education-description textarea { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--control-line); border-radius: .65rem; inline-size: 100%; min-inline-size: 0; min-block-size: 70px; padding: .55rem .75rem; font-size: 1rem; font-weight: 450; resize: vertical; }
+.education-language-fields, .education-add-translation { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; gap: .45rem .7rem; }
+.education-language-fields > .education-note { grid-column: 1 / -1; margin: 0; }
+.education-form-actions { margin-block-start: 1rem; }
+.education-success, .education-error { color: var(--success); background: var(--surface); border: 1px solid var(--line); border-radius: .65rem; padding: .65rem .85rem; }
+.education-error { color: var(--error); margin-block-start: .75rem; }
+.education-status-form { display: grid; gap: .65rem; margin-block: .8rem 1rem; }
+.education-delete { border-block-start: 1px solid var(--line); padding-block-start: .85rem; }
+.education-danger { color: var(--error); }
+.education-dialog-name { font-weight: 630; }
+@media (max-width: 1180px) {
+  .education-filters { grid-template-columns: minmax(0, 1fr) minmax(0, .6fr); }
+  .education-filter-actions { grid-column: 1 / -1; }
+  .education-editor { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+  .education-heading { flex-direction: column; align-items: flex-start; }
+  .education-filters, .education-language-fields, .education-add-translation { grid-template-columns: minmax(0, 1fr); }
+  .education-nav a { padding-inline: .65rem; }
+  .education-table { display: none; }
+  .education-rows { display: grid; gap: .65rem; list-style: none; padding: 0; margin-block-end: .8rem; }
+  .education-mobile-record { display: grid; gap: .45rem; padding: .72rem; border: 1px solid var(--line); border-radius: .65rem; overflow-wrap: anywhere; }
+  .education-mobile-record dl { display: grid; gap: .4rem; }
+  .education-mobile-record dl > div { display: grid; gap: .75rem; grid-template-columns: minmax(0, .76fr) minmax(0, 1fr); align-items: baseline; }
+  .education-mobile-record dt { color: var(--subtle); font-size: .875rem; }
+  .education-mobile-record .education-edit-link { justify-self: start; }
+}

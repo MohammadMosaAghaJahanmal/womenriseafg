@@ -1,24 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
-import { Layers3, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Activity, BookOpen, ChevronRight, GraduationCap, UserRound } from 'lucide-react';
+import { Layers3, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Activity, BookOpen, ChevronRight, FolderTree, GraduationCap, UserRound } from 'lucide-react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Badge, Button, Card, PanelDialog, SelectField, StatePanel } from '../../components/ui/Primitives';
+import { Button, Card, PanelDialog, SelectField, StatePanel } from '../../components/ui/Primitives';
 import { languageNames, languages, type Language } from '../../i18n';
 import { usePreferences, type Theme } from '../../preferences';
+import { AdminEducation, matchEducationRoute } from '../education/AdminEducation';
+import { EducationFamilies } from '../education/EducationIndex';
+import { educationPath } from '../education/api';
 import ComponentLibrary from './ComponentLibrary';
 import './strings';
 import './admin.css';
 
 const destinations = [
   { to: '/admin', label: 'overview', Icon: LayoutDashboard },
+  { to: educationPath(), label: 'education:title', Icon: FolderTree },
   { to: '/admin/components', label: 'library', Icon: Layers3 },
   { to: '/status', label: 'service', Icon: Activity },
 ];
 
 function SidebarLinks({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
-  const { t } = useTranslation(['admin', 'auth']);
+  const { t } = useTranslation(['admin', 'auth', 'education']);
   return <nav className="admin-links" aria-label={t('nav')}>{destinations.map(({ to, label, Icon }) =>
-    <NavLink key={to} to={to} end onClick={onNavigate} aria-label={collapsed ? t(label) : undefined} title={collapsed ? t(label) : undefined}>
+    <NavLink key={to} to={to} end={to !== educationPath()} onClick={onNavigate} aria-label={collapsed ? t(label) : undefined} title={collapsed ? t(label) : undefined}>
       <Icon size={19} aria-hidden="true" /><span className={collapsed ? 'admin-sr' : undefined}>{t(label)}</span>
     </NavLink>)}
     <Link to="/account" onClick={onNavigate} title={collapsed ? t('auth:account') : undefined}>
@@ -60,8 +64,9 @@ export function ComponentPreviewPage() {
 }
 
 function Overview() {
-  const { t } = useTranslation('admin');
-  return <><div className="admin-section-heading"><div><Badge>{t('preview')}</Badge><h1>{t('admin')}</h1><p>{t('intro')}</p></div></div>
+  const { t } = useTranslation(['admin', 'education']);
+  return <><div className="admin-section-heading"><div><h1>{t('admin')}</h1><p>{t('education:dashboardIntro')}</p></div></div>
+    <EducationFamilies dashboard />
     <section aria-labelledby="admin-tools"><h2 className="admin-tools-title" id="admin-tools">{t('overviewLinks')}</h2>
       <div className="admin-overview-grid">
         {[
@@ -79,7 +84,7 @@ function Overview() {
 }
 
 export default function AdminPage() {
-  const { t } = useTranslation('admin');
+  const { t } = useTranslation(['admin', 'education']);
   const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
@@ -92,7 +97,9 @@ export default function AdminPage() {
     }
   }, [pathname]);
   const route = pathname.replace(/\/+$/, '');
-  const page = route === '/admin' ? 'overview' : route === '/admin/components' ? 'library' : 'unknown';
+  const education = matchEducationRoute(route);
+  const page = route === '/admin' ? 'overview' : route === '/admin/components' ? 'library' :
+    education ? 'education:' + ('kind' in education ? education.kind : 'title') : 'unknown';
   useEffect(() => { document.title = t(page) + ' · womenriseafg'; }, [t, page]);
   useEffect(() => {
     const media = window.matchMedia('(min-width: 900px)');
@@ -121,7 +128,7 @@ export default function AdminPage() {
         <PreferenceFields />
       </header>
       <main className="admin-main" id="admin-main" tabIndex={-1} ref={main}>
-        {page === 'overview' ? <Overview /> : page === 'library' ? <ComponentLibrary /> :
+        {education ? <AdminEducation route={education} /> : page === 'overview' ? <Overview /> : page === 'library' ? <ComponentLibrary /> :
           <><h1>{t('unknown')}</h1><StatePanel kind="empty" title={t('back')}><Button asChild><Link to="/admin">{t('overview')}</Link></Button></StatePanel></>}
       </main>
     </div>

@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Request, RequestHandler } from 'express';
 import type { IdentitySession, IdentityStore } from '../../identity/store';
-import { administrationPermission } from '../../identity/roles';
+import { accountPermission } from '../../identity/roles';
 import { ApiError } from '../../middleware/errors';
 
 const hour = 3600000;
@@ -37,11 +37,15 @@ export function loadIdentity(store: IdentityStore, cookieName: string): RequestH
   };
 }
 
+export function sessionPermissions(permissions: string[], adminScope: boolean) {
+  return adminScope ? permissions : permissions.filter(permission => permission === accountPermission);
+}
+
 export function requirePermission(permission: string): RequestHandler {
   return (_request, response, next) => {
     const account: IdentitySession | null | undefined = response.locals.identity;
     if (!account) return next(new ApiError(401, 'AUTH_REQUIRED', 'Sign in to continue.'));
-    if (!account.permissions.includes(permission) || (permission === administrationPermission && !account.adminScope)) {
+    if (!sessionPermissions(account.permissions, account.adminScope).includes(permission)) {
       return next(new ApiError(403, 'FORBIDDEN', 'Access denied.'));
     }
     next();

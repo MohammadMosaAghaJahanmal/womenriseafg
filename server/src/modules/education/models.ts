@@ -64,6 +64,7 @@ export function normalizeEducationSearch(value: string) {
     .replace(/[يى]/g, 'ی')
     .replace(/ك/g, 'ک')
     .replace(/[ۀة]/g, 'ه')
+    .replace(/[٠-٩۰-۹]/g, digit => String('٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹'.indexOf(digit) % 10))
     .replace(/\u200c/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

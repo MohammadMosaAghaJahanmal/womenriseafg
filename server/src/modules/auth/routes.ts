@@ -9,7 +9,7 @@ import { validateInput } from '../../middleware/validation';
 import { loginInput, registerInput, type Credentials } from './credentials';
 import { hashPassword, verifyPassword } from './passwords';
 import { requireOriginAndJson, requireSecureTransport } from './request';
-import { loadIdentity, newSession, requestTokenHash, requirePermission, sessionCookie } from './session';
+import { loadIdentity, newSession, requestTokenHash, requirePermission, sessionCookie, sessionPermissions } from './session';
 
 interface RouteOptions {
   origins: readonly string[];
@@ -19,8 +19,7 @@ interface RouteOptions {
 
 function publicAccount(account: IdentityAccount | null, adminScope: boolean) {
   if (!account) return null;
-  const permissions = adminScope ? account.permissions : account.permissions.filter(code => code !== administrationPermission);
-  return { username: account.login, permissions };
+  return { username: account.login, permissions: sessionPermissions(account.permissions, adminScope) };
 }
 
 function invalidCredentials() {

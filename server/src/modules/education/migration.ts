@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { QueryTypes, type Sequelize, type Transaction } from 'sequelize';
 import { defineIdentityModels } from '../../identity/models';
 import { administratorRoles } from '../../identity/roles';
+import { educationManagePermission, educationPublishPermission } from './contract';
 import { seedEducation } from './seed';
 
 const version = '003-education-organization';
@@ -131,7 +132,7 @@ export async function migrateEducation(db: Sequelize) {
       await db.transaction(async transaction => {
         await seedEducation(db, transaction);
         const { Permission, RolePermission } = defineIdentityModels(db);
-        for (const permissionCode of ['education:manage', 'education:publish']) {
+        for (const permissionCode of [educationManagePermission, educationPublishPermission]) {
           await Permission.upsert({ code: permissionCode }, { transaction });
           for (const roleCode of administratorRoles) {
             await RolePermission.upsert({ roleCode, permissionCode }, { transaction });

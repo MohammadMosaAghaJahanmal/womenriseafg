@@ -60,6 +60,7 @@ test('education administration CRUD, translation, publication and permissions us
   const student = prefix + '-student';
   const managerRole = 'test-manage-' + key;
   const password = 'test-passphrase-' + key;
+  let educationReady = false;
   const values = (slug: string, name: string, extra: Partial<EducationInput> = {}): EducationInput => ({
     slug: prefix + '-' + slug, translations: [{ locale: 'en', name, description: '' }], ...extra,
   });
@@ -69,6 +70,7 @@ test('education administration CRUD, translation, publication and permissions us
     const runs = await Promise.all([migrateEducation(db), migrateEducation(db)]);
     assert.ok(runs.filter(Boolean).length <= 1);
     assert.equal(await migrateEducation(db), false);
+    educationReady = true;
     await db.query('INSERT INTO roles (code) VALUES ($role)', { bind: { role: managerRole } });
     await db.query("INSERT INTO role_permissions (role_code, permission_code) VALUES ($role, 'admin:access'), ($role, 'education:manage')",
       { bind: { role: managerRole } });
@@ -185,11 +187,19 @@ test('education administration CRUD, translation, publication and permissions us
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
     try {
-      // Only the entries and test identities created by this run are removed.
-      await db.query("DELETE FROM education_entries WHERE slug LIKE $prefix AND kind = 'subjects'", { bind: { prefix: prefix + '-%' } });
-      await db.query('DELETE FROM education_entries WHERE slug LIKE $prefix', { bind: { prefix: prefix + '-%' } });
-      await db.query('DELETE FROM users WHERE login IN ($admin, $manager, $student)', { bind: { admin, manager, student } });
-      await db.query('DELETE FROM roles WHERE code = $role', { bind: { role: managerRole } });
-    } finally { await db.close(); }
+      if (educationReady) {
+        // Only the entries and test identities created by this run are removed.
+        await db.query('DELETE t FROM education_translations t JOIN education_entries e ON e.id = t.entry_id WHERE e.slug LIKE $prefix',
+          { bind: { prefix: prefix + '-%' } });
+        await db.query('DELETE l FROM education_languages l JOIN education_entries e ON e.id = l.entry_id WHERE e.slug LIKE $prefix',
+          { bind: { prefix: prefix + '-%' } });
+        await db.query("DELETE FROM education_entries WHERE slug LIKE $prefix AND kind = 'subjects'", { bind: { prefix: prefix + '-%' } });
+        await db.query('DELETE FROM education_entries WHERE slug LIKE $prefix', { bind: { prefix: prefix + '-%' } });
+        await db.query('DELETE FROM users WHERE login IN ($admin, $manager, $student)', { bind: { admin, manager, student } });
+        await db.query('DELETE FROM roles WHERE code = $role', { bind: { role: managerRole } });
+      }
+    } finally {
+      await db.close();
+    }
   }
 });
