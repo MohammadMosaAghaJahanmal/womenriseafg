@@ -65,3 +65,67 @@ Sequelize 6 still depends on the deprecated dottie package. The final dependency
 Stage 2 is the design system and application layouts. It requires separate owner approval.
 
 **STAGE 1 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**
+
+## Stage 2 — Design system and application layouts
+
+**Completed on 26 November 2026.** The guest student workspace and separate administration preview run from the existing React/Vite and Express application. The student interface supports English, Pashto and Dari, mirrors for right-to-left reading, and offers light, dark and system appearance.
+
+### What was implemented
+
+- The homepage uses an original, locally served illustration and four illustrated subject cards. Start learning opens the subject explorer. Each subject opens a labeled preview with expandable topic descriptions. Future areas have clearly marked destinations. Search finds pages in the workspace navigation.
+- The student shell has a collapsible desktop rail, mobile header, five-item bottom navigation, mobile drawer, skip link, footer, language switcher and theme selector. Keyboard users can open search, navigate the results and dismiss dialogs with Escape.
+- The visual system supplies semantic color, focus and state tokens, local Inter and Noto Sans Arabic fonts, responsive typography and reduced-motion behavior. The component library includes buttons, fields, search, selects, tabs, badges, tooltips, dialogs, a drawer, cards, progress, pagination, status feedback and accessible tables.
+- The public administration preview has its own navigation and breadcrumbs. Its component examples support search, filtering, sorting, pagination, reset with confirmation, a toast and native media controls. The resource cards and short audio sample demonstrate the interface. They hold no student records or published course material.
+
+### Implementation choices and files
+
+| Location | Changes |
+| --- | --- |
+| `client/src/App.tsx`, `main.tsx`, `i18n.ts`, `preferences.tsx`, `styles.css` | Routes, locale selection, document language and direction, local preferences, font declarations, color tokens and reduced motion |
+| `client/src/layouts/`, `features/discover/` | Responsive navigation, footer, page search, homepage, subject explorer, illustrations and translations |
+| `client/src/components/ui/`, `features/admin/` | Source-owned UI primitives including an adapted shadcn/ui button and Radix controls, accessible previews and local tone sample |
+| `client/src/pages/` | Settings, future-section previews, missing-page handling and the preserved Stage 1 status workflow |
+| `client/public/` | WebP artwork, favicon, local font and shadcn license notices. The hero artwork was AI-generated for this interface and visually reviewed |
+| `client/index.html`, `client/package.json`, `client/vite.config.ts`, `package-lock.json` | Vite/Tailwind integration, client dependencies, production entry and reproducible dependency versions |
+| `README.md`, `docs/PROGRESS.md`, `docs/screenshots/stage-2/` | Current routes, stage record and four screenshots from the production build |
+
+The 12 original design references retained their recorded SHA-256 hashes. No project files were removed. Stage 1 health, readiness, static-file boundaries and same-origin routing were preserved. Production splits the administration and secondary workspace pages into separately loaded chunks.
+
+### Database, security and privacy
+
+There were no server changes, database connections added, migrations, models, indexes or constraints in Stage 2. The status view calls the existing public health endpoint. The administration preview exposes local examples and navigation only. Authentication and privileged operations remain in their designated stages.
+
+During production browser checks the site issued no cross-origin requests, set no cookies and issued no write requests. Fresh guest visits left local storage empty. After explicit choices, the only entries were the interface language and theme. Learner progress, search history and downloads are outside this stage.
+
+### Testing results
+
+| Command or check | Observed result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck` | Passed for the project and both TypeScript workspaces |
+| `npm test` | All 9 existing foundation tests passed, with zero failures or skips |
+| `npm run build` | Vite and the TypeScript server build passed. The final homepage JavaScript entry measured 117.5 kB gzip. Fonts and artwork are served locally |
+| `npm run dev`, `npm start` | Development proxy and live health endpoint responded. The compiled application served its routes, assets and status view through Express |
+| Production browser and HTTP checks | 18 direct routes in each of 3 locales passed. Health returned 200, readiness returned the expected 503 with an intentionally unavailable database, and all five reserved/private/missing path probes returned 404. Unexpected health JSON produced a visible error and retry recovered against the real API |
+| Chrome responsive and interaction checks | The student interface was exercised in all three languages at 320 × 568, 360 × 800, 390 × 844, 768 × 1024, 1024 × 768, 1366 × 768, 1440 × 900 and 1920 × 1080. Verified subject selection, keyboard search, collapse, drawers, focus restoration, RTL placement, system theme changes and persistence. Admin table, card, media, confirmation and feedback examples also passed |
+| axe-core 4.14.1 and manual checks | Fixed the search control’s accessible name to match the visible shortcut. The final 16 scans covered six pages and two dialogs in English/light and Dari/dark and reported zero violations. Manual review covered decorative glyphs and drawer labels that automation could not evaluate. Drawer text contrast measured 7.75:1 in light mode and 10.73:1 in dark mode |
+| Font and asset checks | FontTools verified all 59 distinct Arabic-script code points in the UI/alphabet check against the bundled font, including Pashto-specific letters. The hero loaded from the application origin. All four screenshot files were verified |
+| `npm audit`, `npm audit --omit=dev`, `git diff --check` | Both dependency audits reported zero known vulnerabilities. The tracked diff passed its whitespace check |
+
+### Screenshots
+
+- [English student homepage, desktop](screenshots/stage-2/womenriseafg-home-desktop.png)
+- [Pashto student homepage, mobile](screenshots/stage-2/womenriseafg-home-mobile-ps.png)
+- [Dari student homepage, tablet in dark mode](screenshots/stage-2/womenriseafg-home-tablet-fa.png)
+- [Administration component library, desktop](screenshots/stage-2/womenriseafg-admin-components.png)
+
+### Known limits and hosting
+
+Browser verification used Chrome. Translation coverage, script glyphs and RTL behavior were tested. Native-speaker editorial review and assistive-technology testing with learners remain outstanding. The learning sections and administration examples are clearly labeled previews. Real content and management workflows belong to their authorized stages.
+
+The existing single-origin production entry serves the built client, illustrations, fonts and audio locally. Production was verified on the local machine. The actual cPanel/Passenger provider and its hosting limits still need verification. No live deployment was performed.
+
+### Next recommended stage
+
+Stage 3 covers database, authentication and authorization. It requires separate owner approval.
+
+**STAGE 2 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**

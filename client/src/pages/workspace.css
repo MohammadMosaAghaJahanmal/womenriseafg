@@ -1,0 +1,11 @@
+.workspace-page { max-inline-size: 75rem; margin-inline: auto; padding: clamp(1.4rem, 4vw, 4rem) clamp(1rem, 3vw, 3rem); }
+.workspace-page h1 { color: var(--ink); font-weight: 700; font-size: clamp(1.85rem, 3.8vw, 3rem); letter-spacing: -.042em; line-height: 1.22; margin-block: .35rem 1rem; }
+.workspace-intro { max-inline-size: 56ch; color: var(--muted); margin-block-end: 1.65rem; }
+.workspace-panel { max-inline-size: 40rem; }
+.workspace-options { display: grid; gap: 1.15rem; }
+.workspace-page :is(.workspace-note, .workspace-options p) { color: var(--muted); font-size: .93rem; }
+.workspace-note { margin-block-start: 1rem; }
+.workspace-status h2, .workspace-ok { display: flex; align-items: center; gap: .65rem; }
+.workspace-status h2 { font-size: 1.2rem; font-weight: 650; }
+.workspace-ok { color: var(--success); padding-block: 1rem; }
+.workspace-status .ui-btn { margin-block-start: .6rem; }

@@ -1,53 +1,31 @@
-import { useEffect, useState } from 'react';
-import { checkApiHealth } from './services/health';
+import { lazy, Suspense, useEffect } from 'react';
+import { Route, Routes, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import StudentLayout from './layouts/StudentLayout';
+import { HomePage, ExplorePage } from './features/discover/Discover';
+import { sectionLabel } from './pages/routes';
+import './pages/strings';
 
-type HealthState = 'checking' | 'available' | 'unavailable';
-
-const healthMessages: Record<HealthState, string> = {
-  checking: 'Checking the API connection…',
-  available: 'The API is responding.',
-  unavailable: 'The connection check failed. Try again.',
-};
+const AdminPage = lazy(() => import('./features/admin/AdminPage'));
+const WorkspacePage = lazy(() => import('./pages/WorkspacePages'));
 
 export default function App() {
-  const [health, setHealth] = useState<HealthState>('checking');
-  const [attempt, setAttempt] = useState(0);
-
+  const { pathname } = useLocation();
+  const { t } = useTranslation(['shell', 'pages']);
   useEffect(() => {
-    const controller = new AbortController();
-    async function checkConnection() {
-      let result: HealthState;
-      try {
-        await checkApiHealth(controller.signal);
-        result = 'available';
-      } catch {
-        result = 'unavailable';
-      }
-      if (!controller.signal.aborted) setHealth(result);
-    }
-    void checkConnection();
-    return () => controller.abort();
-  }, [attempt]);
+    const path = pathname.replace(/\/+$/, '');
+    const key = path === '' ? 'home' : path === '/explore' ? 'explore' :
+      path === '/admin' || path.startsWith('/admin/') ? 'admin' : sectionLabel(path);
+    document.title = (key ? t(key) : t('pages:notFound')) + ' · womenriseafg';
+  }, [pathname, t]);
 
-  function checkAgain() {
-    setHealth('checking');
-    setAttempt((previous) => previous + 1);
-  }
-
-  return (
-    <main>
-      <header>
-        <p className="brand">womenriseafg</p>
-        <h1>Project foundation</h1>
-        <p className="stage">Stage 1 development status</p>
-      </header>
-      <section aria-labelledby="connection-heading">
-        <h2 id="connection-heading">API connection</h2>
-        <p role="status" aria-live="polite" aria-atomic="true">{healthMessages[health]}</p>
-        <button type="button" onClick={checkAgain} disabled={health === 'checking'}>
-          {health === 'unavailable' ? 'Try again' : 'Check again'}
-        </button>
-      </section>
-    </main>
-  );
+  const loading = <p className="p-6" role="status">{t('pages:loading')}</p>;
+  return <Routes>
+    <Route path="admin/*" element={<Suspense fallback={loading}><AdminPage /></Suspense>} />
+    <Route element={<StudentLayout />}>
+      <Route index element={<HomePage />} />
+      <Route path="explore" element={<ExplorePage />} />
+      <Route path="*" element={<Suspense fallback={loading}><WorkspacePage /></Suspense>} />
+    </Route>
+  </Routes>;
 }

@@ -1,6 +1,17 @@
 # womenriseafg
 
-Stage 1 provides the development and production foundation for a free, multilingual education platform for Afghan girls and women. The current page displays the development stage and the live status of the API. It can be opened as a guest.
+womenriseafg is a free learning workspace for Afghan girls and women. Stage 2 provides guest-accessible layouts in English, Pashto and Dari. Learners can explore four planned subject outlines and choose a language and appearance. Upcoming sections and demonstration content are labeled in the interface.
+
+## Stage 2 pages
+
+| Address | What you can try |
+| --- | --- |
+| `/`, `/explore` | Browse the four subject areas and open a topic outline |
+| `/settings` | Set the interface language and light, dark or system appearance |
+| `/status` | Run the Stage 1 public API connection check and retry after a failure |
+| `/admin`, `/admin/components` | Open the public layout preview, exercise table and form controls, compare component states and play a local audio sample |
+
+Only explicit language and theme choices are saved in the browser. The page search covers workspace navigation. Preview pages contain no student records or administrative write actions.
 
 ## Run locally
 
@@ -59,11 +70,12 @@ The lockfile pins Sequelize's transitive UUID library to the patched CommonJS-co
 
 ## Repository guide
 
-- `client/` holds the React/TypeScript entry, Vite configuration and API status view.
+- `client/src/` holds React Router layouts, shared theme and language preferences, semantic CSS tokens, UI primitives, subject discovery, administration previews and the API status view.
+- `client/public/` holds the local illustration, favicon and license notices. Vite bundles the Inter and Noto Sans Arabic webfonts with the application.
 - `server/src/` holds validated configuration, the MySQL connection factory, the Express application, versioned health routes, input validation, error handling and the process entry.
 - `server/tests/` contains the Stage 1 regression suite.
 - `docs/PROGRESS.md` records stage results and the current approval boundary.
 - `AGENTS.md` records the owner's stage rules.
 - `How the complete website should look/` holds the owner's original local references. The directory is excluded from Git and build artifacts.
 
-The next planned stage is the design system and application layouts, subject to explicit owner approval.
+The next planned stage is Stage 3, database, authentication and authorization. It requires separate owner approval.
