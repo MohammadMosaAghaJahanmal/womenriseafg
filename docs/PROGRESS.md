@@ -514,3 +514,60 @@ Learning data is browser-specific. Clearing it leaves opted-in certificate verif
 Stage 10, complete homepage and multilingual experience, requires separate approval.
 
 **STAGE 9 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**
+
+## Stage 10 — Complete homepage and multilingual experience
+
+**Completed on 26 November 2026.** The womenriseafg homepage now brings together published resources and lets administrators manage its sections, branding and announcements.
+
+### Implementation and preserved functionality
+
+- The compact hero and Start Learning action lead to the public courses. The homepage supports Continue Learning, Browse by Subject, Featured Courses, Popular Courses, Recommended Courses, latest videos, Shorts, recommended books, AI educational lessons, learning paths, Daily Learning, recently added resources, the mission and footer. Optional sections appear when enabled and populated.
+- Staff can reorder sections by dragging or with labeled move buttons, hide sections, select published courses and books, and manage multilingual announcements. Branding settings control the platform name, logo, browser icon, slogan and mission. The shell and browser titles use the configured name.
+- Popular courses use actual aggregate course opens. Course suggestions use subject, category and level. Featured courses and selected books follow staff ordering. Recently added resources use published catalog data. Explore and its legacy subject links lead to live subject-filtered search.
+- The interface, navigation, settings and available-translation notices are in English, Pashto and Dari. Catalog and search filters are independent of the interface language. Pashto and Dari use RTL layouts, and English uses LTR. Cards identify preview and PDF languages separately. Changing the interface language during a quiz preserves the attempt's selected question language.
+- The homepage reuses the existing visual system and local hero illustration. It uses compact cards on mobile and lazy-loads published thumbnails. All 12 original design references matched the SHA-256 baseline. Guest learning, access checks, media permissions, opt-in progress and certificates were exercised during verification.
+- The old subject-outline preview, downloads placeholder and obsolete navigation-search styling were removed. The component library remains available in administration.
+
+### Files and database
+
+| Area | Changes |
+| --- | --- |
+| `client/src/features/homepage/` | Published homepage cards, content-language control, low-data hero, announcements, branding provider and staff settings |
+| `client/src/features/discover/`, both navigation shells, `client/src/App.tsx` and `client/src/main.tsx` | Live subject navigation, homepage and editor entry points, responsive footer, browser branding and removal of previews |
+| Course, lesson, media, book, quiz and discovery client modules | Language labels and filtering, RTL/LTR presentation, consistent fallback and course-open measurement |
+| `server/src/modules/homepage/`, `server/src/app.ts`, `server/src/index.ts`, `server/src/identity/cli.ts` | Homepage data, versioned configuration, count collection, permission and migration wiring |
+| `server/src/modules/discovery/` and the quiz reader | Content-language matching, preferred-language ranking and multilingual normalization |
+| `server/tests/homepage.test.ts`, `server/tests/homepage.integration.test.ts`, `server/tests/engagement.integration.test.ts`, `README.md` and `docs/PROGRESS.md` | Regression coverage, operator instructions and stage record |
+
+Migration `011-homepage` adds InnoDB tables `homepage_settings` and `homepage_course_opens`. The settings table uses a singleton primary key, JSON-object constraint and modification version. The totals table uses a course primary key and foreign key, a positive-count constraint and an index for ranking by opens. The migration grants `homepage:manage` to the built-in administrator roles and seeds the default branding and section order.
+
+### Security and privacy
+
+Homepage configuration writes require an administrator session, homepage permission, an allowed origin, valid JSON and the current version. The server validates that selected content and images are published and rechecks their visibility when serving the homepage. The public API uses `Cache-Control: no-store`. The course-open signal omits credentials and sends only the published course code. The database retains the course ID and its cumulative total. The public feed exposes ranking order. It omits raw counts and learner data. Settings describes course-open measurement in all three interface languages.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck`, `git diff --check` | Passed |
+| `npm test` with `WOMENRISEAFG_IDENTITY_TEST=1` on disposable MySQL 8.0.31 | 29 passed, 0 failed, 0 skipped. Covered repeatable migrations, permissions, origin and version checks, published-only panels and brand assets, atomic course-open totals, Arabic-script normalization, strict language filtering and language preference |
+| `npm run build` | Both workspaces built. Vite emitted two upstream Zod annotation notices and bundle-size warnings for the main client and lazy PDF reader |
+| `npm run dev`, migration CLI and compiled `node app.js` behind local HTTPS | The frontend, readiness and homepage API responded. The CLI applied migration 011 to a fresh browser schema and reran successfully. The public endpoint returned no-store data, and guest access to homepage management returned HTTP 401 |
+| Chrome staff and guest flows on the compiled site | Verified published logo and favicon selection, slogan and name changes, featured course and book selection, three-language announcements, section reorder and hide, public rendering and ranking from real browser opens. Confirmed an English course in a Pashto interface and exercised Pashto and Dari search |
+| Chrome homepage states | Verified loading, simulated service failure and live retry, empty-language reset, low-data mode without the decorative hero image, live subject redirects and opt-in resume. The guest flow made no cross-origin requests and loaded no audio or video on the homepage |
+| Chrome multilingual and responsive checks | 141 route and viewport checks spanning major guest and staff pages. 24 additional homepage checks across eight viewport sizes and three locales. Verified RTL/LTR direction, mobile drawer keyboard handling and Start Learning above the first screen |
+| Automated accessibility | 15 axe scans on the compiled learner site passed. An additional editor harness with simulated API responses passed 36 layout checks and 12 axe scans across all three languages. The harness also exercised pointer and keyboard reorder and stale-edit recovery |
+| Translation coverage | Checked matching keys and interpolation placeholders in 14 static bundles with 1,234 source messages, including both new homepage bundles |
+| `npm audit --omit=dev` | Reported zero known runtime vulnerabilities |
+
+Browser QA exposed a layout issue when a desktop section contained one card. Bounded the artwork and kept the card in a regular column. Rechecked it visually in English on desktop and Dari on mobile. The test services used separate private integration and browser schemas. The development instance, compiled application, HTTPS gateway and MySQL were stopped. The loopback ports were verified closed and temporary credentials removed.
+
+### Hosting and known limits
+
+The stage uses the existing Node, MySQL, same-origin API and local media setup. It introduces no runtime package dependency or third-party analytics service. Popularity counts cumulative opens, including repeat visits to a course. Live cPanel and Passenger deployment, production-load measurements, browsers beyond Chrome, manual assistive-technology testing and native-speaker editorial review remain unverified.
+
+### Next stage
+
+Stage 11 covers PWA, offline learning, and performance. It requires separate approval.
+
+**STAGE 10 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**

@@ -9,7 +9,7 @@ export type ActivityKind = typeof activityKinds[number];
 export type ResultKind = typeof resultKinds[number];
 export type DailyMode = typeof dailyModes[number];
 export interface DiscoveryText { locale: string; title: string; description: string }
-export interface SearchEntry extends DiscoveryText { kind: ResultKind; id: string; href: string }
+export interface SearchEntry extends DiscoveryText { kind: ResultKind; id: string; href: string; fileLanguage?: string }
 export interface ActivityReference { kind: ActivityKind; id: string }
 export interface PathActivity { reference: ActivityReference; activity: SearchEntry | null }
 export interface PathInput {
@@ -24,7 +24,7 @@ export interface DailySettings { mode: DailyMode; activities: ActivityReference[
 export interface DailyActivity { date: string; item: SearchEntry | null }
 interface List<T> { items: T[]; total: number; page: number; pageSize: number }
 export interface SearchFilters {
-  q?: string; kind?: ResultKind; language?: string; subjectId?: string; categoryId?: string;
+  q?: string; kind?: ResultKind; language?: string; preferred?: string; subjectId?: string; categoryId?: string;
   levelId?: string; gradeId?: string; page?: number; pageSize?: number;
 }
 
@@ -36,13 +36,13 @@ export async function searchContent(filters: SearchFilters, signal: AbortSignal)
   return data;
 }
 
-export async function searchSuggestions(q: string, language: string | undefined, signal: AbortSignal) {
-  const { data } = await service.get<{ items: SearchEntry[] }>('/search/suggestions', { params: { q, language }, signal });
+export async function searchSuggestions(q: string, language: string | undefined, preferred: string, signal: AbortSignal) {
+  const { data } = await service.get<{ items: SearchEntry[] }>('/search/suggestions', { params: { q, language, preferred }, signal });
   return data.items;
 }
 
-export async function loadPaths(q: string, page: number, language: string | undefined, signal: AbortSignal) {
-  const { data } = await service.get<List<SearchEntry>>('/learning-paths', { params: { q, page, language }, signal });
+export async function loadPaths(q: string, page: number, language: string | undefined, preferred: string, signal: AbortSignal) {
+  const { data } = await service.get<List<SearchEntry>>('/learning-paths', { params: { q, page, language, preferred }, signal });
   return data;
 }
 

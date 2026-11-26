@@ -3,8 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { animate } from 'motion/mini';
-import { CheckCircle2, Compass, Monitor } from 'lucide-react';
-import { Badge, Button, Card, SelectField, StatePanel } from '../components/ui/Primitives';
+import { CheckCircle2, Monitor } from 'lucide-react';
+import { Button, Card, SelectField, StatePanel } from '../components/ui/Primitives';
 import { languageNames, languages, type Language } from '../i18n';
 import { usePreferences, type Theme } from '../preferences';
 import { checkApiHealth } from '../services/health';
@@ -14,14 +14,6 @@ import './workspace.css';
 import '../features/auth/auth.css';
 
 import { sectionLabel } from './routes';
-
-function PreviewPage({ section }: { section: string }) {
-  const { t } = useTranslation(['pages', 'shell']);
-  return <div className="workspace-page"><Badge>{t('preview')}</Badge><h1>{t('shell:' + section)}</h1>
-    <p className="workspace-intro">{t(section)}</p>
-    <Button asChild><Link to="/explore"><Compass size={18} aria-hidden="true"/>{t('explore')}</Link></Button>
-  </div>;
-}
 
 export function SettingsPage() {
   const { t } = useTranslation(['pages', 'shell', 'auth']);
@@ -44,6 +36,9 @@ export function SettingsPage() {
       {clearResult !== undefined && <p role="status">{t(clearResult ? 'auth:cleared' : 'auth:unavailable')}</p>}
     </section>
     <LearningPreference />
+    <section className="auth-settings workspace-panel">
+      <h2>{t('courseOpenTitle')}</h2><p>{t('courseOpenDescription')}</p>
+    </section>
   </div>;
 }
 
@@ -84,5 +79,5 @@ export default function WorkspacePage() {
   const section = sectionLabel(pathname);
   if (section === 'settings') return <SettingsPage />;
   if (section === 'status') return <QueryClientProvider client={queryClient}><StatusPage /></QueryClientProvider>;
-  return section ? <PreviewPage section={section} /> : <NotFoundPage />;
+  return <NotFoundPage />;
 }

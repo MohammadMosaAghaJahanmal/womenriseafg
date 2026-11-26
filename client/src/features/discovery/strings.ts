@@ -5,6 +5,7 @@ export const discoveryNamespace = 'learningDiscovery';
 const en = {
   search: 'Search learning content', find: 'Search', query: 'Keywords', suggestions: 'Suggested results',
   kind: 'Content type', subjectLabel: 'Subject', categoryLabel: 'Category', level: 'Level', grade: 'Grade', language: 'Content language',
+  fileLanguage: 'File language', metadataLanguage: 'Title and description language',
   all: 'All', clear: 'Clear filters', loading: 'Loading learning content…', failed: 'Learning content could not be loaded.',
   retry: 'Try again', empty: 'No learning content matches these filters.', course: 'Course', lesson: 'Lesson', video: 'Video',
   short: 'Short video', book: 'Book', quiz: 'Quiz', ai: 'AI learning', subject: 'Subject', category: 'Category',
@@ -25,6 +26,7 @@ const en = {
 const ps: typeof en = {
   search: 'درسي منځپانګه ولټوئ', find: 'لټون', query: 'کلیدي ټکي', suggestions: 'وړاندیز شوې پایلې',
   kind: 'د منځپانګې ډول', subjectLabel: 'مضمون', categoryLabel: 'ډله', level: 'کچه', grade: 'ټولګی', language: 'د منځپانګې ژبه',
+  fileLanguage: 'د فایل ژبه', metadataLanguage: 'د سرلیک او تشریح ژبه',
   all: 'ټول', clear: 'چاڼونه پاک کړئ', loading: 'درسي منځپانګه بارېږي…', failed: 'درسي منځپانګه بار نه شوه.',
   retry: 'بیا هڅه وکړئ', empty: 'له دې چاڼونو سره سم درسي منځپانګه نشته.', course: 'کورس', lesson: 'درس', video: 'ویډیو',
   short: 'لنډه ویډیو', book: 'کتاب', quiz: 'ازموینه', ai: 'د مصنوعي ځیرکتیا زده کړه', subject: 'مضمون', category: 'ډله',
@@ -45,6 +47,7 @@ const ps: typeof en = {
 const fa: typeof en = {
   search: 'جست‌وجوی محتوای آموزشی', find: 'جست‌وجو', query: 'کلیدواژه‌ها', suggestions: 'نتایج پیشنهادی',
   kind: 'نوع محتوا', subjectLabel: 'مضمون', categoryLabel: 'دسته', level: 'سطح', grade: 'صنف', language: 'زبان محتوا',
+  fileLanguage: 'زبان فایل', metadataLanguage: 'زبان عنوان و توضیحات',
   all: 'همه', clear: 'پاک‌کردن فیلترها', loading: 'در حال بارگیری محتوای آموزشی…', failed: 'محتوای آموزشی بار نشد.',
   retry: 'تلاش دوباره', empty: 'محتوای آموزشی مطابق این فیلترها پیدا نشد.', course: 'دوره', lesson: 'درس', video: 'ویدیو',
   short: 'ویدیوی کوتاه', book: 'کتاب', quiz: 'آزمون', ai: 'یادگیری هوش مصنوعی', subject: 'مضمون', category: 'دسته',

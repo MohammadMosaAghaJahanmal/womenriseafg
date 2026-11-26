@@ -77,7 +77,7 @@ Use `auth:recover` in the same command to set a replacement passphrase. Username
 | `npm run build` | Build both workspaces for production |
 | `npm start` | Serve the built application from Express |
 | `npm audit --omit=dev` | Review the installed runtime dependency tree for known advisories |
-| `npm run db:migrate` | Apply and verify identity, education, media, courses, learning media, books, quizzes, discovery and certificate migrations |
+| `npm run db:migrate` | Apply and verify identity, education, media, courses, learning media, books, quizzes, discovery, certificates and homepage migrations |
 | `npm run auth:bootstrap -- USERNAME` | Establish the first super administrator with a passphrase on standard input |
 | `npm run auth:recover -- USERNAME` | Replace an administrator's passphrase and revoke active sessions |
 | `npm run auth:purge-sessions` | Remove expired identity sessions |
@@ -183,14 +183,26 @@ After completing all currently published lessons in a course, a learner can prep
 
 Migrations `008-quizzes`, `009-discovery` and `010-certificates` extend the existing MySQL schema. Built-in administrators receive `quiz:manage`, `quiz:publish`, `discovery:manage` and `discovery:publish`. The service uses the existing MySQL 8 same-origin setup. Search uses indexed publication and reference checks with bounded result pages. It requires no external search service or worker. Run the migration CLI with a backup and confirm the provider's MySQL version and query limits before live deployment.
 
+## Homepage and multilingual publishing
+
+Open **Homepage settings** in administration to reorder sections, change visibility, select featured courses and recommended books, and manage multilingual announcements. Use the drag handle or the labeled move buttons to reorder sections. The homepage displays each optional section when it is enabled and has eligible published content. Continue Learning appears for learners who enabled device learning and have a resumable activity.
+
+Under **Branding**, staff can set the platform name, select a public logo and browser icon from the media library, and enter a slogan and mission in English, Pashto and Dari. Publish branding images through the existing media review workflow before selecting them. When an image is withdrawn, the built-in mark or browser icon is used. The editor saves with a version check so concurrent changes can be reviewed before reloading the settings.
+
+The interface language controls the menus, controls and direction. Content language can be selected independently on the homepage and in the learning catalogs. Results label the preview language, available translations and the PDF language where applicable. Explore links directly to published subjects. Search normalizes Arabic-script letter and digit variants while respecting the selected content language.
+
+Popular courses are ranked by cumulative opens of the published course page. The browser sends only the course code without credentials, and MySQL stores the per-course total. Related course suggestions use published subject, category and education level. Settings explains course-open measurement in all three languages.
+
+Migration `011-homepage` adds `homepage_settings` and `homepage_course_opens`, and grants `homepage:manage` to the built-in administrators. The public homepage and branding are available at `/api/v1/homepage` and `/api/v1/homepage/branding`. The editor uses the protected `/api/v1/admin/homepage` endpoint. The configuration and counts share the existing MySQL database and selected images use the existing private media storage.
+
 ## Repository guide
 
 - `client/src/` holds React Router layouts, shared theme and language preferences, semantic CSS tokens, UI primitives, subject discovery, administration previews and the API status view.
 - `client/public/` holds the local illustration, favicon and license notices. Vite bundles the Inter and Noto Sans Arabic webfonts with the application.
 - `server/src/` holds validated configuration, the MySQL connection factory, the Express application, versioned health routes, input validation, error handling and the process entry.
-- `server/tests/` contains foundation, identity, education, media, course, learning media, book and learning-engagement regression tests.
+- `server/tests/` contains foundation, identity, education, media, course, learning media, book, learning-engagement and homepage regression tests.
 - `docs/PROGRESS.md` records stage results and the current approval boundary.
 - `AGENTS.md` records the owner's stage rules.
 - `How the complete website should look/` holds the owner's original local references. The directory is excluded from Git and build artifacts.
 
-The next planned stage is Stage 10, complete homepage and multilingual experience. It requires separate owner approval.
+The next planned stage is Stage 11, PWA, offline learning, and performance. It requires separate owner approval.

@@ -15,9 +15,16 @@ const pathTaxonomy = {
   subject: 'p.subject_id', category: 'subject.category_id', level: 'p.level_id',
 };
 const courseSubject = 'LEFT JOIN education_entries subject ON subject.id = c.subject_id';
-const lessonWords = `LOWER(REGEXP_REPLACE(
-  REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(CONCAT(t.title, ' ', t.description),
-    'ي', 'ی'), 'ى','ی'), 'ك','ک'), 'ۀ','ه'), 'ة','ه'), '‌',' '), '[ً-ٰٟ]', ''))`;
+const arabicSearchPairs = [
+  ['ي', 'ی'], ['ى', 'ی'], ['ك', 'ک'], ['ۀ', 'ه'], ['ة', 'ه'], ['\u200c', ' '],
+  ...Array.from('٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹', (digit, index) => [digit, String(index % 10)]),
+];
+// Lesson summaries are stored without a normalized search column. Fold the display text without reading full lesson bodies.
+function normalizedWords(column: string) {
+  const letters = arabicSearchPairs.reduce((value, [from, to]) => `REPLACE(${value}, '${from}', '${to}')`, column);
+  return `LOWER(TRIM(REGEXP_REPLACE(REGEXP_REPLACE(${letters}, '[ً-ٰٟ]', ''), '[[:space:]]+', ' ')))`;
+}
+const lessonWords = normalizedWords("CONCAT(t.title, ' ', t.description)");
 const referenceCourse = `LEFT JOIN courses c ON c.id = lm.related_course_id AND ${publicCourse}`;
 const pdfJoin = "JOIN media_assets pdf ON pdf.id = b.pdf_id AND pdf.kind = 'pdf'";
 const mediaJoin = 'JOIN media_assets asset ON asset.id = lm.media_id';
@@ -37,6 +44,7 @@ interface Branch {
   visibility: string;
   locale?: string;
   language?: string;
+  fileLanguage?: string;
   taxonomy?: { subject?: string; category?: string; level?: string; grade?: string };
 }
 
@@ -48,10 +56,10 @@ const branches: Branch[] = [
       JOIN lesson_translations t ON t.lesson_id = l.id ${courseSubject}`,
     visibility: `${publicCourse} AND ${visibleLesson} AND (l.kind <> 'text' OR LENGTH(TRIM(t.body)) > 0)` },
   { kinds: ['video', 'short', 'ai'], kind: "CASE WHEN lm.kind = 'resource' THEN 'ai' ELSE lm.kind END",
-    id: 'lm.id', slug: 'lm.slug', taxonomy: { ...courseTaxonomy, category: 'COALESCE(lm.category_id, subject.category_id)' },
+    id: 'lm.id', slug: 'lm.slug', fileLanguage: 'asset.language', taxonomy: { ...courseTaxonomy, category: 'COALESCE(lm.category_id, subject.category_id)' },
     from: `learning_media lm ${mediaJoin} ${referenceCourse} ${courseSubject}
       JOIN learning_media_translations t ON t.learning_media_id = lm.id`, visibility: publicLearningMedia },
-  { kinds: ['book'], kind: "'book'", id: 'b.id', slug: 'b.slug', language: 'b.content_language',
+  { kinds: ['book'], kind: "'book'", id: 'b.id', slug: 'b.slug', language: 'b.content_language', fileLanguage: 'b.content_language',
     words: "CONCAT(t.search_text, ' ', b.search_text)",
     taxonomy: { category: 'b.category_id', level: 'b.level_id', grade: 'b.grade_id' },
     from: `books b ${pdfJoin} JOIN book_translations t ON t.book_id = b.id`, visibility: publicBook },
@@ -75,8 +83,9 @@ type SearchFilter = Partial<Omit<SearchQuery, 'q' | 'page' | 'pageSize'>> & {
   kinds?: DiscoverableKind[];
   activitiesOnly?: boolean;
 };
-type SearchRow = Omit<SearchEntry, 'href'> & {
+type SearchRow = Omit<SearchEntry, 'href' | 'fileLanguage'> & {
   slug: string;
+  fileLanguage: string | null;
   parent: string | null;
   subjectId: string | null;
   categoryId: string | null;
@@ -103,7 +112,8 @@ function searchHref({ kind, id, slug, parent }: SearchRow) {
 }
 
 function projected(row: SearchRow): SearchEntry {
-  return { kind: row.kind, id: row.id, locale: row.locale, title: row.title, description: row.description, href: searchHref(row) };
+  return { kind: row.kind, id: row.id, locale: row.locale, title: row.title, description: row.description, href: searchHref(row),
+    ...(row.fileLanguage ? { fileLanguage: row.fileLanguage } : {}) };
 }
 
 function candidateQuery(filter: SearchFilter) {
@@ -142,7 +152,7 @@ function candidateQuery(filter: SearchFilter) {
       const visible = (column?: string) => column ? `IF(${publicTaxon(column)}, ${column}, NULL)` : 'NULL';
       const resultKind = filter.kind === 'ai' && branch.id === 'lm.id' ? "'ai'" : kind;
       return `SELECT ${resultKind} AS kind, ${id} AS id, ${code} AS slug, ${parent ? `CONVERT(${parent} USING utf8mb4) COLLATE utf8mb4_unicode_ci` : 'NULL'} AS parent,
-        t.locale, ${title} AS title, LEFT(t.description, 320) AS description,
+        t.locale, ${branch.fileLanguage ?? 'NULL'} AS fileLanguage, ${title} AS title, LEFT(t.description, 320) AS description,
         ${visible(taxons.subject)} AS subjectId, ${visible(taxons.category)} AS categoryId,
         ${visible(taxons.level)} AS levelId, ${visible(taxons.grade)} AS gradeId, ${rank} AS score FROM ${from}
         WHERE ${clauses.join(' AND ')}`;
@@ -157,13 +167,14 @@ function queryBase(filter: SearchFilter) {
   )`;
 }
 
-function parameters(filter: SearchFilter, preference = filter.language ?? 'en') {
+function parameters(filter: SearchFilter, preference = filter.preferred ?? filter.language ?? 'en') {
   return { ...filter, languagePreference: preference };
 }
 
 export function discoverySearch(db: Sequelize) {
   async function search(query: SearchQuery, preference?: string) {
     const filter = { ...query, normalized: normalizeEducationSearch(query.q) };
+    if (query.q && !filter.normalized) return { items: [], total: 0, page: query.page, pageSize: query.pageSize };
     const offset = (query.page - 1) * query.pageSize;
     const replacements = { ...parameters(filter, preference), offset, limit: query.pageSize };
     const base = queryBase(filter);

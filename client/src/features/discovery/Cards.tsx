@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button, StatePanel } from '../../components/ui/Primitives';
-import { useContentLanguage } from '../courses/student/components';
+import { learnerLanguageName, useContentLanguage } from '../courses/student/components';
 import { useEducationData } from '../education/useEducationData';
 import '../engagement/engagement.css';
 import { dailyActivity, relatedLearning, type ResultKind, type SearchEntry } from './api';
@@ -20,7 +20,12 @@ export function EntryLink({ entry }: { entry: SearchEntry }) {
   const join = entry.href.includes('?') ? '&' : '?';
   const to = entry.kind === 'category' || entry.kind === 'subject' ? entry.href
     : entry.href + join + new URLSearchParams({ lang: entry.locale });
-  return <Link to={to}><span><small>{t(entry.kind)}</small><bdi lang={entry.locale}>{entry.title}</bdi>
+  return <Link to={to}><span>
+    <small>{t(entry.kind)} · <bdi lang={entry.locale}>{learnerLanguageName(entry.locale)}</bdi></small>
+    <bdi lang={entry.locale}>{entry.title}</bdi>
+    {entry.fileLanguage && entry.fileLanguage !== entry.locale && <small>
+      {t('fileLanguage')} · <bdi lang={entry.fileLanguage}>{learnerLanguageName(entry.fileLanguage)}</bdi>
+    </small>}
     {entry.description && <small lang={entry.locale} dir="auto">{entry.description}</small>}</span></Link>;
 }
 

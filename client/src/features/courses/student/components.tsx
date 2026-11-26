@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, ChevronDown, FileText, Headphones, Layers3, Play, Video } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Button, SelectField, StatePanel } from '../../../components/ui/Primitives';
 import { languageNames, type Language } from '../../../i18n';
 import { preferredName, type EducationRecord } from '../../education/api';
@@ -20,6 +20,17 @@ export function learnerLanguageName(locale: string) {
   if (known) return known;
   try { return new Intl.DisplayNames(locale, { type: 'language' }).of(locale) || locale; }
   catch { return locale; }
+}
+
+export function contentLocale(value?: string | null) {
+  if (!value || value.length > 35) return undefined;
+  try {
+    const parsed = new Intl.Locale(value.trim());
+    if (parsed.toString() === parsed.baseName) return parsed.baseName;
+  } catch {
+    // Treat malformed links as though the language parameter was omitted.
+  }
+  return undefined;
 }
 
 export function localizedNumber(value: number, locale: string) {
@@ -46,7 +57,7 @@ export function lessonPath(course: string, lesson: string, language?: string) {
 export function useContentLanguage() {
   const { i18n } = useTranslation(courseNamespace);
   const [params, setParams] = useSearchParams();
-  const explicit = params.get('lang') || undefined;
+  const explicit = contentLocale(params.get('lang'));
   return {
     explicit, preferred: explicit ?? i18n.language,
     setLanguage(locale: string) {
@@ -55,6 +66,23 @@ export function useContentLanguage() {
       setParams(next, { preventScrollReset: true });
     },
   };
+}
+
+export function ContentLanguageNotice({ preferred, actual }: { preferred: string; actual: string }) {
+  const { t } = useTranslation(courseNamespace);
+  if (preferred === actual) return null;
+  return <p className="learn-muted learn-language-notice">
+    <Trans t={t} i18nKey="fallbackLanguage"
+      values={{ preferred: learnerLanguageName(preferred), actual: learnerLanguageName(actual) }}
+      components={{ preferredName: <bdi lang={preferred} />, actualName: <bdi lang={actual} /> }} />
+  </p>;
+}
+
+export function AvailableLanguages({ locales, label }: { locales: string[]; label?: string }) {
+  const { t } = useTranslation(courseNamespace);
+  return <ul className="learn-languages" aria-label={label ?? t('availableLanguages')}>
+    {locales.map(locale => <li key={locale}><bdi lang={locale}>{learnerLanguageName(locale)}</bdi></li>)}
+  </ul>;
 }
 
 export function ContentLanguageSelect({ label, locales, selected, onSelect }: {
@@ -121,9 +149,7 @@ export function CourseCard({ course, language, subjects, levels }: {
         <span>{t('lessonCount', { count: course.lessonCount, number: localizedNumber(course.lessonCount, i18n.language) })}</span>
         {course.estimatedMinutes != null && <span>{t('minutes', { number: localizedNumber(course.estimatedMinutes, i18n.language) })}</span>}
       </div>
-      <ul className="learn-languages" aria-label={t('availableLanguages')}>
-        {course.translations.map(item => <li key={item.locale}><bdi lang={item.locale}>{learnerLanguageName(item.locale)}</bdi></li>)}
-      </ul>
+      <AvailableLanguages locales={course.translations.map(item => item.locale)} />
       <div className="learn-card-cta" aria-hidden="true">{t('viewCourse')} <ArrowRight size={16} className="ui-direction" /></div>
     </div>
   </article>;

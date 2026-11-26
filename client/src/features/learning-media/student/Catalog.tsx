@@ -3,7 +3,7 @@ import { useCallback, type ChangeEvent, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { Button, InputField, Pagination, SelectField, StatePanel } from '../../../components/ui/Primitives';
-import { learnerLanguageName, localizedNumber } from '../../courses/student/components';
+import { contentLocale, learnerLanguageName, localizedNumber } from '../../courses/student/components';
 import { preferredName, type EducationRecord } from '../../education/api';
 import { useEducationData } from '../../education/useEducationData';
 import { listLearning, loadFacets, type CatalogQuery } from './api';
@@ -13,20 +13,13 @@ import { learningMediaNamespace } from './strings';
 const emptyRecords: EducationRecord[] = [];
 const categoryPattern = /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i;
 
-function validLocale(value: string) {
-  if (!value || value.length > 35) return '';
-  try { return new Intl.Locale(value).baseName; }
-  catch { return ''; }
-}
-
 export function useCatalogQuery() {
   const [params, setParams] = useSearchParams();
   const rawCategory = params.get('categoryId') ?? '';
-  const rawLanguage = params.get('language') ?? '';
   const query: CatalogQuery = {
     q: params.get('q')?.trim().slice(0, 120) ?? '',
     categoryId: categoryPattern.test(rawCategory) ? rawCategory : '',
-    language: validLocale(rawLanguage),
+    language: contentLocale(params.get('language')) ?? '',
     page: Math.min(100000, Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1)),
   };
   return {
@@ -75,7 +68,7 @@ export function CatalogFilters({ catalog, facets, compact }: { catalog: CatalogC
   const filters = <>
     <div className="learn-filters lm-filters">
       <form className="learn-search" role="search" aria-label={t('search')} onSubmit={search}>
-        <InputField key={q} name="q" type="search" label={t('search')} maxLength={120} placeholder={t('searchPlaceholder')} defaultValue={q} />
+        <InputField key={q} name="q" type="search" dir="auto" label={t('search')} maxLength={120} placeholder={t('searchPlaceholder')} defaultValue={q} />
         <Button type="submit" variant="secondary" aria-label={t('search')}><Search size={18} aria-hidden="true" /></Button>
       </form>
       <SelectField label={t('category')} value={categoryId} onChange={change('categoryId')} disabled={!categories.length && !categoryId}>

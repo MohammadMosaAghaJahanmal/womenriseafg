@@ -147,8 +147,8 @@ export function quizReader(db: Sequelize, models: QuizModels) {
         const predicates = [publicOnly ? publicQuiz : '1 = 1'];
         if (!publicOnly && status) predicates.push('z.status = :status');
         if (courseId) predicates.push('z.course_id = :courseId');
-        const localized = `qt.quiz_id = z.id ${publicOnly ? 'AND ' + quizLocale('qt.locale') : ''}`;
-        if (language) predicates.push(`EXISTS (SELECT 1 FROM quiz_translations qt WHERE ${localized} AND qt.locale = :language)`);
+        const localized = `qt.quiz_id = z.id ${publicOnly ? 'AND ' + quizLocale('qt.locale') : ''} ${language ? 'AND qt.locale = :language' : ''}`;
+        if (language) predicates.push(`EXISTS (SELECT 1 FROM quiz_translations qt WHERE ${localized})`);
         const search = normalizeEducationSearch(q);
         if (search) predicates.push(`(
           LOCATE(:search, CONVERT(z.slug USING utf8mb4) COLLATE utf8mb4_unicode_ci) > 0

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Button, StatePanel } from '../../../components/ui/Primitives';
 import { fileUrl, isMissing } from '../../courses/student/api';
-import { BackLink, chooseTranslation, coursePath, learnerLanguageName, lessonPath, lowDataConnection } from '../../courses/student/components';
+import { AvailableLanguages, BackLink, chooseTranslation, coursePath, learnerLanguageName, lessonPath, lowDataConnection } from '../../courses/student/components';
 import { preferredName, type EducationRecord } from '../../education/api';
 import type { Collection, LearningDetail, LearningItem } from './api';
 import { learningMediaNamespace } from './strings';
@@ -97,9 +97,7 @@ export function StudyCard({ item, collection, categories, language }: {
       <h3><Link to={itemUrl(collection, item.slug, language)}><bdi lang={translation.locale}>{translation.title}</bdi></Link></h3>
       {translation.description && <p lang={translation.locale} dir="auto">{translation.description}</p>}
       {duration && <div className="learn-card-facts"><span>{duration}</span></div>}
-      <ul className="learn-languages" aria-label={t('availableLanguages')}>
-        {item.translations.map(entry => <li key={entry.locale}><bdi lang={entry.locale}>{learnerLanguageName(entry.locale)}</bdi></li>)}
-      </ul>
+      <AvailableLanguages locales={item.translations.map(entry => entry.locale)} label={t('availableLanguages')} />
       <div className="learn-card-cta" aria-hidden="true">{t(label)}<ArrowRight size={16} className="ui-direction" /></div>
     </div>
   </article>;

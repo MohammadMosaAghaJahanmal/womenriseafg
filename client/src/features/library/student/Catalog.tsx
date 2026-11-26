@@ -3,7 +3,7 @@ import { useCallback, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button, InputField, Pagination, SelectField, StatePanel } from '../../../components/ui/Primitives';
-import { chooseTranslation, learnerLanguageName, localizedNumber } from '../../courses/student/components';
+import { chooseTranslation, contentLocale, learnerLanguageName, localizedNumber } from '../../courses/student/components';
 import { preferredName, type EducationRecord } from '../../education/api';
 import { useEducationData } from '../../education/useEducationData';
 import { bookPath, catalogFacets, listBooks, type PublicBook } from './api';
@@ -15,12 +15,6 @@ const emptyTaxonomy = { categories: [], levels: [], languages: [] };
 
 function validId(value: string | null) {
   return value && identifier.test(value) ? value : '';
-}
-
-function validLocale(value: string | null) {
-  if (!value || value.length > 35) return '';
-  try { return new Intl.Locale(value).baseName; }
-  catch { return ''; }
 }
 
 function TaxonomySelect({ label, all, options, value, change }: {
@@ -62,7 +56,7 @@ export default function LibraryCatalog() {
   const q = parameters.get('q')?.trim().slice(0, 120) ?? '';
   const categoryId = validId(parameters.get('categoryId'));
   const levelId = validId(parameters.get('levelId'));
-  const language = validLocale(parameters.get('language'));
+  const language = contentLocale(parameters.get('language')) ?? '';
   const page = Math.max(1, Math.min(100000, Number.parseInt(parameters.get('page') ?? '', 10) || 1));
   const list = parameters.get('view') === 'list';
   const filtered = Boolean(q || categoryId || levelId || language);
@@ -97,7 +91,7 @@ export default function LibraryCatalog() {
     <LibraryBanner />
     <div className="library-filters">
       <form className="learn-search library-search" role="search" aria-label={t('search')} onSubmit={search}>
-        <InputField key={q} name="q" type="search" label={t('search')} maxLength={120} placeholder={t('placeholder')} defaultValue={q} />
+        <InputField key={q} name="q" type="search" dir="auto" label={t('search')} maxLength={120} placeholder={t('placeholder')} defaultValue={q} />
         <Button type="submit" variant="secondary" aria-label={t('search')}><Search size={18} aria-hidden="true" /></Button>
       </form>
       <TaxonomySelect label={t('category')} all={t('allCategories')} options={categories} value={categoryId} change={value => change('categoryId', value)} />

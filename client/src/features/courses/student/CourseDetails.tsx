@@ -7,8 +7,8 @@ import { Recommendations } from '../../discovery/Cards';
 import { CourseLearning } from '../../engagement/CourseLearning';
 import { findCourse, loadCourseFacts } from './api';
 import {
-  BackLink, chooseTranslation, ContentLanguageSelect, CourseCard, CourseCover, Curriculum, FactName,
-  LearnerState, learnerLanguageName, lessonPath, localizedNumber, missingContentKey, useContentLanguage,
+  AvailableLanguages, BackLink, chooseTranslation, ContentLanguageNotice, ContentLanguageSelect, CourseCard, CourseCover,
+  Curriculum, FactName, LearnerState, lessonPath, localizedNumber, missingContentKey, useContentLanguage,
 } from './components';
 import { courseNamespace } from './strings';
 
@@ -41,6 +41,7 @@ export default function CourseDetails() {
       <div className="learn-detail-copy">
         <div className="learn-card-tags"><span>{t('free')}</span>{subject && <span><FactName records={subjects} id={course.subjectId} /></span>}</div>
         <h1 lang={translation.locale} dir="auto">{translation.title}</h1>
+        <ContentLanguageNotice preferred={language.preferred} actual={translation.locale} />
         {translation.description && <p className="learn-prose" lang={translation.locale} dir="auto">{translation.description}</p>}
         <CourseLearning course={course} title={translation.title} locale={translation.locale} language={language.explicit} />
       </div>
@@ -58,9 +59,7 @@ export default function CourseDetails() {
           {course.instructor && <div><UserRound size={17} aria-hidden="true" /><dt>{t('instructor')}</dt><dd><bdi>{course.instructor}</bdi></dd></div>}
         </dl>
         <h2>{t('availableLanguages')}</h2>
-        <ul className="learn-languages">
-          {course.translations.map(item => <li key={item.locale}><bdi lang={item.locale}>{learnerLanguageName(item.locale)}</bdi></li>)}
-        </ul>
+        <AvailableLanguages locales={course.translations.map(item => item.locale)} />
         <ContentLanguageSelect label={t('contentLanguage')} locales={course.translations.map(item => item.locale)}
           selected={translation.locale} onSelect={language.setLanguage} />
       </aside>

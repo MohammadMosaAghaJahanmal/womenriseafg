@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { Button, StatePanel } from '../../../components/ui/Primitives';
 import { fetchTranscript, fileUrl } from '../../courses/student/api';
-import { chooseTranslation, ContentLanguageSelect, learnerLanguageName, useContentLanguage } from '../../courses/student/components';
+import { AvailableLanguages, chooseTranslation, ContentLanguageNotice, ContentLanguageSelect, useContentLanguage } from '../../courses/student/components';
 import { LessonMedia, MediaActions, sizeLabel } from '../../courses/student/LessonMedia';
 import type { EducationRecord } from '../../education/api';
 import { useEducationData } from '../../education/useEducationData';
@@ -59,6 +59,7 @@ export function MediaArticle({ detail, categories, contentLanguage, feed, move }
   const language = useContentLanguage();
   const preference = language.explicit ?? contentLanguage ?? language.preferred;
   const translation = chooseTranslation(item.translations, preference);
+  const locales = item.translations.map(entry => entry.locale);
   const Heading = feed ? 'h2' : 'h1';
   const short = item.kind === 'short';
   const { kind } = media;
@@ -73,10 +74,11 @@ export function MediaArticle({ detail, categories, contentLanguage, feed, move }
         <Heading lang={translation.locale} dir="auto">{translation.title}</Heading>
         {translation.description && <p className="learn-prose" lang={translation.locale} dir="auto">{translation.description}</p>}
         <div className="learning-actions"><SaveResource resource={study} /></div>
-        {language.explicit && language.explicit !== translation.locale && <p className="learn-muted">{t('fallback', { language: learnerLanguageName(translation.locale) })}</p>}
+        <ContentLanguageNotice preferred={preference} actual={translation.locale} />
       </div>
-      <ContentLanguageSelect label={t('language')} locales={item.translations.map(entry => entry.locale)}
-        selected={translation.locale} onSelect={language.setLanguage} />
+      {locales.length === 1 ? <AvailableLanguages label={t('availableLanguages')} locales={locales} />
+        : <ContentLanguageSelect label={t('language')} locales={locales}
+          selected={translation.locale} onSelect={language.setLanguage} />}
     </header>
     <div className="lm-item-layout">
       <div className="lm-item-media">

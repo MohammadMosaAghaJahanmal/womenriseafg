@@ -1,7 +1,7 @@
 import { useCallback, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { chooseTranslation, ContentLanguageSelect, useContentLanguage } from '../../courses/student/components';
+import { AvailableLanguages, chooseTranslation, ContentLanguageNotice, ContentLanguageSelect, useContentLanguage } from '../../courses/student/components';
 import { sizeLabel } from '../../courses/student/LessonMedia';
 import { preferredName, type EducationRecord } from '../../education/api';
 import { useEducationData } from '../../education/useEducationData';
@@ -33,6 +33,7 @@ export default function BookDetails() {
   const book = result.data;
   const labels = taxonomy.status === 'ready' ? taxonomy.data : undefined;
   const description = chooseTranslation(book.translations, language.preferred);
+  const locales = book.translations.map(item => item.locale);
   const fields: { key: string; value: ReactNode }[] = [
     { key: 'author', value: book.author && <bdi>{book.author}</bdi> },
     { key: 'publisher', value: book.publisher && <bdi>{book.publisher}</bdi> },
@@ -52,6 +53,7 @@ export default function BookDetails() {
       <BookCover id={book.coverId} />
       <div className="library-book-title">
         <h1 lang={description.locale} dir="auto">{description.title}</h1>
+        <ContentLanguageNotice preferred={language.preferred} actual={description.locale} />
         {book.author && <p><bdi>{book.author}</bdi></p>}
         <BookReadActions book={book} detailsLanguage={language.explicit} />
         <div className="learning-actions"><SaveResource resource={{ kind: 'book', id: book.id, slug: book.slug,
@@ -62,18 +64,19 @@ export default function BookDetails() {
       {description.description && <section className="learn-panel library-description">
         <div className="library-description-head">
           <h2>{t('about')}</h2>
-          <ContentLanguageSelect label={t('detailsLanguage')} locales={book.translations.map(item => item.locale)}
+          <ContentLanguageSelect label={t('detailsLanguage')} locales={locales}
             selected={description.locale} onSelect={language.setLanguage} />
         </div>
         <p className="learn-prose" lang={description.locale} dir="auto">{description.description}</p>
       </section>}
-      {!description.description && book.translations.length > 1 && <section className="learn-panel library-description">
-        <ContentLanguageSelect label={t('detailsLanguage')} locales={book.translations.map(item => item.locale)}
+      {!description.description && locales.length > 1 && <section className="learn-panel library-description">
+        <ContentLanguageSelect label={t('detailsLanguage')} locales={locales}
           selected={description.locale} onSelect={language.setLanguage} />
       </section>}
       <section className="learn-panel library-metadata" aria-labelledby="book-metadata">
         <h2 id="book-metadata">{t('details')}</h2>
         <dl>{fields.filter(field => field.value).map(({ key, value }) => <div key={key}><dt>{t(key)}</dt><dd>{value}</dd></div>)}</dl>
+        <AvailableLanguages locales={locales} label={t('detailsLanguage')} />
       </section>
     </div>
     <Recommendations kind="book" id={book.id} language={description.locale} />

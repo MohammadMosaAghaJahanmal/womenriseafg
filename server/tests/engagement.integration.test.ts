@@ -85,7 +85,8 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
     assert.ok(subject?.categoryId);
     const title = 'Discovery fixture ' + token;
     const dari = 'کيميای آموزشی';
-    const localized = [{ locale: 'en', title }, { locale: 'fa-AF', title: dari }];
+    const pashto = 'د کيميا زده کړه';
+    const localized = [{ locale: 'en', title }, { locale: 'fa-AF', title: dari }, { locale: 'ps', title: pashto }];
     const courseInput: CourseInput = {
       slug: courseSlug, subjectId: subject.id, levelId: null, gradeId: null, thumbnailId: null, estimatedMinutes: null,
       instructor: '', tagIds: [], relatedCourseIds: [],
@@ -93,7 +94,8 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
       chapters: [{ translations: localized, lessons: ['first', 'second'].map(slug => ({
         slug, kind: 'text', mediaId: null, resources: [],
         translations: localized.map(copy => ({
-          ...copy, title: copy.title + ' ' + slug, body: 'Practice content excluded from search.', description: 'Practise these skills.',
+          ...copy, title: copy.locale === 'ps' && slug === 'first' ? 'لومړی  کوډ ۱۲' : copy.title + ' ' + slug,
+          body: 'Practice content excluded from search.', description: 'Practise these skills.',
         })),
       })) }],
     };
@@ -179,6 +181,26 @@ test('Stage 9 MySQL workflows enforce review and grade guest attempts, search, p
     const found = await json<Matches>(await request('/search?' + searchQuery));
     assert.equal(found.items[0]?.id, course.id);
     assert.equal(found.items[0]?.locale, 'fa-AF');
+    const byCode = (route: string, filters: Record<string, string>) =>
+      request(route + '?' + new URLSearchParams({ q: courseSlug, ...filters }));
+    const preferred = await json<Matches>(await byCode('/search', { kind: 'course', preferred: 'ps' }));
+    assert.equal(preferred.items[0]?.title, pashto);
+    const strict = await json<Matches>(await byCode('/search', { kind: 'course', language: 'FA-af', preferred: 'ps' }));
+    assert.equal(strict.items[0]?.locale, 'fa-AF');
+    assert.equal((await json<Matches>(await byCode('/search', { kind: 'course', language: 'uz' }))).total, 0);
+    const preferredSuggestion = await json<Matches>(await byCode('/search/suggestions', { preferred: 'ps' }));
+    assert.equal(preferredSuggestion.items.find(item => item.id === course.id)?.locale, 'ps');
+    const lessonSearch = await json<Matches>(await request('/search?' + new URLSearchParams({
+      q: 'لومړی كوډ ١٢', kind: 'lesson', language: 'ps', subjectId: subject.id,
+    })));
+    assert.equal(lessonSearch.items[0]?.id, lessonIds[0]);
+    assert.equal((await json<Matches>(await request('/search?' + new URLSearchParams({ q: 'َ ُ' })))).total, 0);
+    const quizLanguageMismatch = await request('/quizzes?' + new URLSearchParams({
+      q: title, language: 'ps', courseId: course.id,
+    }));
+    assert.equal((await json<{ total: number }>(quizLanguageMismatch)).total, 0);
+    const quizPashto = await request('/quizzes?' + new URLSearchParams({ q: 'كيميا', language: 'ps', courseId: course.id }));
+    assert.equal((await json<{ total: number }>(quizPashto)).total, 1);
     const suggestions = await json<Matches>(await request('/search/suggestions?' + new URLSearchParams({ q: 'كِيميای', language: 'fa-AF' })));
     assert.ok(suggestions.items.some(item => item.id === course.id));
     const paged = await json<Matches>(await request('/search?' + searchQuery + '&page=100&pageSize=1'));

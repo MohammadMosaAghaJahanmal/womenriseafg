@@ -30,12 +30,14 @@ export interface SearchEntry extends Translation {
   kind: DiscoverableKind;
   id: string;
   href: string;
+  fileLanguage?: string;
 }
 
 export interface SearchQuery {
   q: string;
   kind?: DiscoverableKind;
   language?: string;
+  preferred?: string;
   subjectId?: string;
   categoryId?: string;
   levelId?: string;

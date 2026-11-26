@@ -11,6 +11,7 @@ import { BookMigrationError, migrateBooks } from '../modules/books/migration';
 import { QuizMigrationError, migrateQuizzes } from '../modules/quizzes/migration';
 import { DiscoveryMigrationError, migrateDiscovery } from '../modules/discovery/migration';
 import { CertificateMigrationError, migrateCertificates } from '../modules/certificates/migration';
+import { HomepageMigrationError, migrateHomepage } from '../modules/homepage/migration';
 import { IdentityMigrationError, migrateIdentity } from './migration';
 import {
   AdministratorAlreadyInitializedError, AdministratorUnavailableError, createIdentityStore,
@@ -61,6 +62,7 @@ async function run(args: string[]) {
       console.log(await migrateQuizzes(db) ? 'Quiz migration applied.' : 'Quiz schema is current.');
       console.log(await migrateDiscovery(db) ? 'Discovery migration applied.' : 'Discovery schema is current.');
       console.log(await migrateCertificates(db) ? 'Certificate migration applied.' : 'Certificate schema is current.');
+      console.log(await migrateHomepage(db) ? 'Homepage migration applied.' : 'Homepage schema is current.');
       return;
     }
     const store = createIdentityStore(db);
@@ -86,7 +88,8 @@ void run(process.argv.slice(2)).catch(error => {
       error instanceof IdentitySchemaUnavailableError || error instanceof IdentityMigrationError ||
       error instanceof EducationMigrationError || error instanceof MediaMigrationError ||
       error instanceof CourseMigrationError || error instanceof LearningMediaMigrationError || error instanceof BookMigrationError ||
-      error instanceof QuizMigrationError || error instanceof DiscoveryMigrationError || error instanceof CertificateMigrationError) {
+      error instanceof QuizMigrationError || error instanceof DiscoveryMigrationError || error instanceof CertificateMigrationError ||
+      error instanceof HomepageMigrationError) {
     console.error(error.message);
   } else {
     console.error('Identity command failed. Check the database connection, permissions, and migration status.');

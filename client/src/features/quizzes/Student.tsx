@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Badge, Button, Card, InputField, Pagination, ProgressIndicator, StatePanel } from '../../components/ui/Primitives';
 import { authError, authStatus } from '../auth/api';
-import { BackLink, chooseTranslation, ContentLanguageSelect, learnerLanguageName, useContentLanguage } from '../courses/student/components';
+import { AvailableLanguages, BackLink, chooseTranslation, contentLocale, ContentLanguageNotice, ContentLanguageSelect, useContentLanguage } from '../courses/student/components';
 import { useEducationData } from '../education/useEducationData';
+import { TaxonomyFilter } from '../discovery/TaxonomyFilter';
 import { Recommendations } from '../discovery/Cards';
 import { recordQuizResult } from '../engagement/local';
 import { SaveResource } from '../engagement/SaveResource';
@@ -28,54 +29,56 @@ export function QuizCatalog() {
   const { t, i18n } = useTranslation(ns);
   const [parameters, setParameters] = useSearchParams();
   const q = (parameters.get('q') ?? '').trim().slice(0, 120);
+  const language = contentLocale(parameters.get('language'));
   const page = Math.min(10000, Math.max(1, Number.parseInt(parameters.get('page') ?? '', 10) || 1));
   const linkedCourse = parameters.get('courseId');
   const courseId = linkedCourse && /^[a-f0-9-]{36}$/i.test(linkedCourse) ? linkedCourse : undefined;
-  const load = useCallback((signal: AbortSignal) => listPublishedQuizzes({ q, page, pageSize: 12, courseId }, signal), [q, page, courseId]);
+  const load = useCallback((signal: AbortSignal) => listPublishedQuizzes({ q, page, pageSize: 12, courseId, language }, signal), [q, page, courseId, language]);
   const { result, reload } = useEducationData(load);
   const number = new Intl.NumberFormat(i18n.language);
 
-  function update(query: string, next = 1) {
-    setParameters({ ...(courseId ? { courseId } : {}), ...(query ? { q: query } : {}),
+  function update(query: string, locale: string | undefined, next = 1) {
+    setParameters({ ...(courseId ? { courseId } : {}), ...(query ? { q: query } : {}), ...(locale ? { language: locale } : {}),
       ...(next > 1 ? { page: String(next) } : {}) });
   }
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const query = String(new FormData(event.currentTarget).get('q') ?? '').trim();
-    update(query);
+    update(query, language);
   }
 
   return <div className="learn-page quiz-page">
     <header className="learn-banner"><div><h1>{t('title')}</h1><p>{t('catalogIntro')}</p></div>
       <ClipboardCheck className="learn-banner-art" size={48} aria-hidden="true" />
     </header>
-    <form className="learn-search quiz-search" role="search" aria-label={t('search')} onSubmit={search}>
-      <InputField type="search" label={t('search')} name="q" defaultValue={q} maxLength={120} key={q} />
-      <Button type="submit">{t('searchAction')}</Button>
-      {q && <Button variant="ghost" onClick={() => update('')}>{t('clear')}</Button>}
-    </form>
+    <div className="learn-filters">
+      <form className="learn-search quiz-search" role="search" aria-label={t('search')} onSubmit={search}>
+        <InputField type="search" dir="auto" label={t('search')} name="q" defaultValue={q} maxLength={120} key={q} />
+        <Button type="submit">{t('searchAction')}</Button>
+      </form>
+      <TaxonomyFilter kind="languages" label={t('contentLanguage')} value={language ?? ''} change={locale => update(q, locale)} />
+      {(q || language) && <Button variant="ghost" onClick={() => update('', undefined)}>{t('clear')}</Button>}
+    </div>
     {result.status !== 'ready' ? <QuizState error={result.status === 'error' ? result.error : undefined} retry={reload} />
       : <>
         {result.data.items.length ? <div className="quiz-grid">{result.data.items.map(quiz => {
-          const copy = chooseTranslation(quiz.translations, i18n.language);
+          const copy = chooseTranslation(quiz.translations, language ?? i18n.language);
           return <Card className="quiz-card" key={quiz.id}>
-            <h2><Link to={quizPath(quiz.slug)}><bdi lang={copy.locale}>{copy.title}</bdi></Link></h2>
+            <h2><Link to={quizPath(quiz.slug, language)}><bdi lang={copy.locale}>{copy.title}</bdi></Link></h2>
             {copy.description && <p dir="auto" lang={copy.locale}>{copy.description}</p>}
             <div className="quiz-meta"><Badge>{t('questions', { count: quiz.questionCount, countText: number.format(quiz.questionCount) })}</Badge>
               <span>{t('passingScore')} {t('percentage', { amount: number.format(quiz.passingScore) })}</span>
             </div>
-            <div className="quiz-meta" aria-label={t('contentLanguages')}>
-              {quiz.translations.map(translation => <bdi key={translation.locale} lang={translation.locale}>{learnerLanguageName(translation.locale)}</bdi>)}
-            </div>
+            <AvailableLanguages label={t('contentLanguages')} locales={quiz.translations.map(translation => translation.locale)} />
           </Card>;
-        })}</div> : <StatePanel kind="empty" title={t(q ? 'noMatches' : 'empty')}>
-          {page > 1 && <Button variant="secondary" onClick={() => update(q)}>{t('prev')}</Button>}
+        })}</div> : <StatePanel kind="empty" title={t(q || language ? 'noMatches' : 'empty')}>
+          {page > 1 && <Button variant="secondary" onClick={() => update(q, language)}>{t('prev')}</Button>}
         </StatePanel>}
         {result.data.total > result.data.pageSize && <Pagination page={page} pages={Math.ceil(result.data.total / result.data.pageSize)}
           pageLabel={t('page', { page: number.format(page), total: number.format(Math.ceil(result.data.total / result.data.pageSize)) })}
           previous={t('prev')} next={t('next')} label={t('pages')}
-          onChange={next => update(q, next)} />}
+          onChange={next => update(q, language, next)} />}
       </>}
   </div>;
 }
@@ -154,8 +157,9 @@ function QuizResults({ quiz, result, submitted, retake }: {
 function QuizAttempt({ quiz, reload }: { quiz: PublicQuiz; reload: () => void }) {
   const { t, i18n } = useTranslation(ns);
   const language = useContentLanguage();
-  const copy = chooseTranslation(quiz.translations, language.preferred);
-  const [started, setStarted] = useState(false);
+  const [attemptLocale, setAttemptLocale] = useState<string>();
+  const copy = chooseTranslation(quiz.translations, attemptLocale ?? language.preferred);
+  const locales = quiz.translations.map(item => item.locale);
   const [focusAttempt, setFocusAttempt] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [completed, setCompleted] = useState<{ result: QuizResult; submitted: Answer[] }>();
@@ -203,7 +207,7 @@ function QuizAttempt({ quiz, reload }: { quiz: PublicQuiz; reload: () => void })
   }
 
   function startAgain() {
-    setStarted(true);
+    setAttemptLocale(current => current ?? copy.locale);
     setCompleted(undefined);
     setAnswers({});
     setError('');
@@ -214,18 +218,19 @@ function QuizAttempt({ quiz, reload }: { quiz: PublicQuiz; reload: () => void })
     <header className="quiz-header">
       <div>
         <h1 lang={copy.locale} dir="auto">{copy.title}</h1>
+        {!attemptLocale && <ContentLanguageNotice preferred={language.preferred} actual={copy.locale} />}
         {copy.description && <p lang={copy.locale} dir="auto">{copy.description}</p>}
         <div className="quiz-meta">
           <Badge>{t('questions', { count: quiz.questionCount, countText: number.format(quiz.questionCount) })}</Badge>
           <span>{t('passingScore')} {t('percentage', { amount: number.format(quiz.passingScore) })}</span>
         </div>
       </div>
-      {!answered && !completed && !pending && <ContentLanguageSelect label={t('contentLanguage')}
-        locales={quiz.translations.map(item => item.locale)} selected={copy.locale} onSelect={language.setLanguage} />}
+      {locales.length === 1 || attemptLocale ? <AvailableLanguages label={t('contentLanguages')} locales={locales} />
+        : <ContentLanguageSelect label={t('contentLanguage')} locales={locales} selected={copy.locale} onSelect={language.setLanguage} />}
     </header>
     <SaveResource resource={{ kind: 'quiz', id: quiz.id, slug: quiz.slug, title: copy.title, locale: copy.locale }} />
     {completed ? <QuizResults quiz={quiz} result={completed.result} submitted={completed.submitted} retake={startAgain} />
-      : !started ? <Button onClick={startAgain}><Play size={18} aria-hidden="true" />{t('start')}</Button>
+      : !attemptLocale ? <Button onClick={startAgain}><Play size={18} aria-hidden="true" />{t('start')}</Button>
         : <form className="quiz-attempt" onSubmit={submit}>
           <h2 tabIndex={-1} ref={questionHeading}>{t('attempt')}</h2>
           <div className="quiz-attempt-progress"><ProgressIndicator value={100 * answered / Math.max(1, quiz.questions.length)} label={t('progress', { answered: number.format(answered), total: number.format(quiz.questions.length) })} />

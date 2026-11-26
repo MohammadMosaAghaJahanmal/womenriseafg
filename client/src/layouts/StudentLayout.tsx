@@ -2,18 +2,19 @@ import { useEffect, useRef, useState, type DialogHTMLAttributes } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Bookmark, BookOpen, BookOpenText, CalendarDays, ChevronDown, ChevronRight,
-  ClipboardList, Compass, Download, Film, Globe2, GraduationCap, Home, Library, Menu, Monitor,
+  Bookmark, BookOpen, CalendarDays, ChevronDown, ChevronRight,
+  ClipboardList, Compass, Film, Globe2, GraduationCap, Home, Library, Menu, Monitor,
   Moon, PanelLeftClose, PanelLeftOpen, Route, Search, Settings, Sparkles, Sun, UserRound, Video, X,
   type LucideIcon,
 } from 'lucide-react';
 import { usePreferences } from '../preferences';
 import { languageNames } from '../i18n';
+import { BrandLogo, useBranding } from '../features/homepage/Branding';
 import { sectionPath } from '../pages/routes';
 import './shellTranslations';
 import './shell.css';
 
-type Destination = { to: string; label: string; icon: LucideIcon; upcoming?: boolean };
+type Destination = { to: string; label: string; icon: LucideIcon };
 const mainLinks: Destination[] = [
   { to: '/', label: 'home', icon: Home },
   { to: '/explore', label: 'explore', icon: Compass },
@@ -29,20 +30,18 @@ const mainLinks: Destination[] = [
   { to: '/my-learning', label: 'learning', icon: GraduationCap },
   { to: '/account', label: 'account', icon: UserRound },
 ];
-const plannedLinks: Destination[] = [
-  { to: '/downloads', label: 'downloads', icon: Download },
-].map(item => ({ ...item, upcoming: true }));
 const settingsLink: Destination = { to: '/settings', label: 'settings', icon: Settings };
-const allLinks: Destination[] = [...mainLinks, ...plannedLinks, settingsLink, { to: '/status', label: 'status', icon: Monitor }];
+const allLinks: Destination[] = [...mainLinks, settingsLink, { to: '/status', label: 'status', icon: Monitor }];
 const bottomLinks = ['/', '/courses', '/shorts', '/library', '/my-learning'].map(to => allLinks.find(link => link.to === to)!);
 const collections = new Set(['/courses', '/videos', '/shorts', '/ai-learning', '/library', '/quizzes', '/learning-paths']);
 const themeIcons = { light: Sun, dark: Moon, system: Monitor } as const;
 
 function Brand({ onClick }: { onClick?: () => void }) {
   const { t } = useTranslation('shell');
-  return <Link className="shell-brand" to="/" onClick={onClick} aria-label={t('brand')}>
-    <span className="shell-brand-mark"><BookOpenText size={24} strokeWidth={1.8} aria-hidden="true" /></span>
-    <bdi className="shell-wordmark" dir="ltr">womenrise<span>afg</span></bdi>
+  const { branding } = useBranding();
+  return <Link className="shell-brand" to="/" onClick={onClick} aria-label={t('brand', { name: branding.name })}>
+    <span className="shell-brand-mark"><BrandLogo id={branding.logoId} /></span>
+    <bdi className="shell-wordmark" dir="auto">{branding.name === 'womenriseafg' ? <>womenrise<span>afg</span></> : branding.name}</bdi>
   </Link>;
 }
 
@@ -74,20 +73,16 @@ function Navigation({ id, onNavigate }: { id: string; onNavigate?: () => void })
   const { pathname } = useLocation();
   const current = sectionPath(pathname);
   return <nav aria-label={t('navigation')} id={id} className="shell-navigation">
-    {[{ title: 'browse', links: mainLinks }, { title: 'upcoming', links: plannedLinks }].map(group =>
-      <div className="shell-nav-group" key={group.title}>
-        <p className="shell-nav-heading" id={id + '-' + group.title}>{t(group.title)}</p>
-        <ul aria-labelledby={id + '-' + group.title}>
-          {group.links.map(({ to, label, icon: Icon, upcoming }) => {
-            const name = upcoming ? t('upcomingItem', { name: t(label) }) : t(label);
-            return <li key={to}><NavLink end={!collections.has(to)} to={to} title={name} aria-label={name} onClick={onNavigate}
-              className={({ isActive }) => 'shell-nav-link' + (isActive || to === current ? ' shell-active' : '')}>
-              <Icon size={18} strokeWidth={1.75} aria-hidden="true" /><span>{t(label)}</span>
-            </NavLink></li>;
-          })}
-        </ul>
-      </div>
-    )}
+    <div className="shell-nav-group">
+      <p className="shell-nav-heading" id={id + '-browse'}>{t('browse')}</p>
+      <ul aria-labelledby={id + '-browse'}>
+        {mainLinks.map(({ to, label, icon: Icon }) =>
+          <li key={to}><NavLink end={!collections.has(to)} to={to} title={t(label)} aria-label={t(label)} onClick={onNavigate}
+            className={({ isActive }) => 'shell-nav-link' + (isActive || to === current ? ' shell-active' : '')}>
+            <Icon size={18} strokeWidth={1.75} aria-hidden="true" /><span>{t(label)}</span>
+          </NavLink></li>)}
+      </ul>
+    </div>
   </nav>;
 }
 
@@ -107,7 +102,7 @@ const closeOnEscape: DialogHTMLAttributes<HTMLDialogElement>['onKeyDown'] = even
 };
 
 export default function StudentLayout() {
-  const { t } = useTranslation(['shell', 'auth']);
+  const { t } = useTranslation('shell');
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
@@ -199,18 +194,19 @@ export default function StudentLayout() {
       </header>
       <main id="main-content" ref={main} tabIndex={-1} className="shell-main"><Outlet /></main>
       <footer className="shell-footer">
-        <span>{t('mission')}</span>
-        <div><Link to="/settings">{t('settings')}</Link><Link to="/status">{t('status')}</Link>
-          <Link to="/design-preview">{t('auth:adminPreview')}</Link><Link to="/admin">{t('admin')}</Link></div>
+        <div className="shell-footer-brand"><Brand /><p>{t('mission')}</p></div>
+        <nav aria-label={t('footerNav')} className="shell-footer-links">
+          <Link to="/courses">{t('courses')}</Link><Link to="/library">{t('library')}</Link>
+          <Link to="/settings">{t('settings')}</Link><Link to="/status">{t('status')}</Link><Link to="/admin">{t('admin')}</Link>
+        </nav>
       </footer>
     </div>
 
     <nav ref={bottomNav} aria-label={t('primaryNav')} className="shell-bottom">
-      {bottomLinks.map(({ to, label, icon: Icon, upcoming }) => {
+      {bottomLinks.map(({ to, label, icon: Icon }) => {
         const name = t(label === 'library' ? 'libraryShort' : label);
-        const accessibleName = upcoming ? t('upcomingItem', { name }) : name;
-        return <NavLink key={to} end={!collections.has(to)} to={to} title={accessibleName}
-          aria-label={accessibleName}
+        return <NavLink key={to} end={!collections.has(to)} to={to} title={name}
+          aria-label={name}
           className={({ isActive }) => 'shell-tab' + (isActive || to === current?.to ? ' shell-tab-active' : '')}>
           <Icon size={20} strokeWidth={1.8} aria-hidden="true" />
           <span>{name}</span>

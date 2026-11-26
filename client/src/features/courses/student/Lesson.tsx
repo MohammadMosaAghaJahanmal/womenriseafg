@@ -7,7 +7,7 @@ import { Recommendations } from '../../discovery/Cards';
 import { LessonLearning } from '../../engagement/CourseLearning';
 import { findLesson, type LessonResponse } from './api';
 import {
-  BackLink, chooseTranslation, ContentLanguageSelect, coursePath, Curriculum, LearnerState, learnerLanguageName,
+  AvailableLanguages, BackLink, chooseTranslation, ContentLanguageNotice, ContentLanguageSelect, coursePath, Curriculum, LearnerState,
   lessonIcons, lessonPath, localizedNumber, missingContentKey, useContentLanguage,
 } from './components';
 import { LessonMedia, MediaActions } from './LessonMedia';
@@ -83,11 +83,10 @@ export default function LessonPage() {
         </div>
         <h1 lang={translation.locale} dir="auto">{translation.title}</h1>
         {translation.description && <p className="learn-prose" lang={translation.locale} dir="auto">{translation.description}</p>}
-        {language.explicit && language.explicit !== translation.locale && <p className="learn-muted">
-          {t('fallbackLanguage', { language: learnerLanguageName(translation.locale) })}
-        </p>}
+        <ContentLanguageNotice preferred={language.preferred} actual={translation.locale} />
       </div>
-      <ContentLanguageSelect label={t('lessonLanguages')} locales={lessonLocales} selected={translation.locale} onSelect={language.setLanguage} />
+      {lessonLocales.length === 1 ? <AvailableLanguages locales={lessonLocales} label={t('lessonLanguages')} />
+        : <ContentLanguageSelect label={t('lessonLanguages')} locales={lessonLocales} selected={translation.locale} onSelect={language.setLanguage} />}
     </header>
     <div className="learn-lesson-layout">
       <LessonCurriculum course={course} lesson={lesson} preference={language.preferred} explicit={language.explicit} />

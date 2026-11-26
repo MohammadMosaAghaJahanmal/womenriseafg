@@ -6,14 +6,14 @@ import { Button, InputField, Pagination, SelectField, StatePanel } from '../../.
 import { preferredName } from '../../education/api';
 import { useEducationData } from '../../education/useEducationData';
 import { listCourses, loadCourseFacets } from './api';
-import { CourseCard, LearnerState, learnerLanguageName, localizedNumber } from './components';
+import { contentLocale, CourseCard, LearnerState, learnerLanguageName, localizedNumber } from './components';
 import { courseNamespace } from './strings';
 
 export default function CourseCatalog() {
   const { t, i18n } = useTranslation(courseNamespace);
   const [params, setParams] = useSearchParams();
   const q = params.get('q')?.trim().slice(0, 120) ?? '';
-  const language = params.get('language') ?? '';
+  const language = contentLocale(params.get('language')) ?? '';
   const subjectId = params.get('subjectId') ?? '';
   const levelId = params.get('levelId') ?? '';
   const page = Math.min(100000, Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1));
@@ -56,24 +56,30 @@ export default function CourseCatalog() {
     </header>
     <div className="learn-filters">
       <form className="learn-search" role="search" aria-label={t('search')} onSubmit={search}>
-        <InputField key={q} type="search" name="q" label={t('search')} maxLength={120} placeholder={t('searchHint')} defaultValue={q} />
+        <InputField key={q} type="search" name="q" dir="auto" label={t('search')} maxLength={120} placeholder={t('searchHint')} defaultValue={q} />
         <Button type="submit" variant="secondary" aria-label={t('search')} title={t('search')}><Search size={18} aria-hidden="true" /></Button>
       </form>
       <SelectField label={t('contentLanguage')} value={language} onChange={event => updateFilter('language', event.target.value)}>
         <option value="">{t('anyLanguage')}</option>
-        {locales.map(locale => <option key={locale} lang={locale} value={locale}>{learnerLanguageName(locale)}</option>)}
+        {locales.map(locale => <option key={locale} lang={locale} dir="auto" value={locale}>{learnerLanguageName(locale)}</option>)}
       </SelectField>
       <SelectField label={t('subject')} value={subjectId} disabled={!subjects.length && !subjectId}
         onChange={event => updateFilter('subjectId', event.target.value)}>
         <option value="">{t('anySubject')}</option>
         {subjectId && !subjects.some(item => item.id === subjectId) && <option value={subjectId}>{t('subject')}</option>}
-        {subjects.map(item => <option key={item.id} value={item.id}>{preferredName(item, i18n.language).name}</option>)}
+        {subjects.map(item => {
+          const title = preferredName(item, i18n.language);
+          return <option key={item.id} lang={title.locale} dir="auto" value={item.id}>{title.name}</option>;
+        })}
       </SelectField>
       <SelectField label={t('level')} value={levelId} disabled={!levels.length && !levelId}
         onChange={event => updateFilter('levelId', event.target.value)}>
         <option value="">{t('anyLevel')}</option>
         {levelId && !levels.some(item => item.id === levelId) && <option value={levelId}>{t('level')}</option>}
-        {levels.map(item => <option key={item.id} value={item.id}>{preferredName(item, i18n.language).name}</option>)}
+        {levels.map(item => {
+          const title = preferredName(item, i18n.language);
+          return <option key={item.id} lang={title.locale} dir="auto" value={item.id}>{title.name}</option>;
+        })}
       </SelectField>
       {filtered && <Button variant="ghost" onClick={() => setParams(new URLSearchParams())}>{t('reset')}</Button>}
     </div>

@@ -10,7 +10,7 @@
 }
 .shell-collapsed { --shell-rail-width: 76px; }
 .shell svg { flex-shrink: 0; }
-.shell-brand, .shell-nav-link, .shell-tab, .shell-footer a, .shell-search-list a { text-decoration: none; }
+.shell-brand, .shell-nav-link, .shell-tab, .shell-footer a { text-decoration: none; }
 .shell-skip {
   position: fixed;
   inset-block-start: .5rem;
@@ -43,11 +43,13 @@
   align-items: center;
   gap: .62rem;
   min-block-size: 44px;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   color: var(--ink);
   line-height: 1;
   white-space: nowrap;
 }
-.shell-wordmark { font-weight: 750; font-size: 1.19rem; letter-spacing: -.065em; }
+.shell-wordmark { font-weight: 750; font-size: 1.19rem; letter-spacing: -.065em; overflow: hidden; text-overflow: ellipsis; }
 .shell-wordmark span { font-weight: 540; }
 .shell-brand-mark {
   display: grid;
@@ -76,7 +78,7 @@
   font-weight: 660;
   letter-spacing: .015em;
 }
-.shell-navigation ul, .shell-search-list ul { list-style: none; padding: 0; margin: 0; }
+.shell-navigation ul { list-style: none; padding: 0; margin: 0; }
 .shell-navigation li + li { margin-block-start: 2px; }
 .shell-nav-link {
   display: flex;
@@ -198,7 +200,10 @@
   font-size: .82rem;
   line-height: 1.6;
 }
-.shell-footer div { display: flex; flex-wrap: wrap; gap: 1.25rem; }
+.shell-footer-brand { min-inline-size: 0; }
+.shell-footer-brand p { margin: .2rem 0 .55rem; }
+.shell-footer .shell-brand { color: var(--ink); }
+.shell-footer-links { display: flex; flex-wrap: wrap; column-gap: 1rem; }
 .shell-footer a { display: inline-flex; align-items: center; min-block-size: 44px; color: var(--muted); }
 .shell-footer a:hover { text-decoration: underline; }
 .shell-dialog {
@@ -231,31 +236,10 @@ html:has(.shell-dialog[open]) { overflow: hidden; }
 .shell-drawer-preferences { padding: .4rem 1rem .8rem; border-block-start: 1px solid var(--line); }
 .shell-options-full { margin-inline: .5rem; }
 .shell-options-full .shell-select { border-color: var(--line); font-size: .9rem; }
-.shell-search-dialog { border-radius: 16px; inline-size: min(31rem, calc(100vw - 2rem)); max-block-size: min(70dvh, 40rem); }
-.shell-search-content { padding: 1rem 1.25rem 1.25rem; }
-.shell-search-help { margin: .1rem 0 1rem; color: var(--muted); font-size: .91rem; }
-.shell-search-field {
-  display: flex; align-items: center; gap: .55rem; min-block-size: 44px;
-  padding-inline: .75rem; border: 1px solid var(--line); border-radius: 9px; color: var(--muted);
-}
-.shell-search-field:focus-within { border-color: var(--focus); outline: 2px solid var(--focus); outline-offset: 1px; }
-.shell-search-field input { inline-size: 100%; min-inline-size: 0; min-block-size: 44px; border: 0; padding: .45rem 0; color: var(--ink); background: transparent; font: inherit; }
-.shell-search-field input:focus { outline: none; }
-.shell-search-field input::placeholder { color: var(--muted); }
-.shell-search-list .shell-nav-heading { margin: 1rem 0 .35rem; }
-.shell-search-list a {
-  display: flex; align-items: center; gap: .65rem; min-block-size: 44px;
-  padding: .45rem .5rem; border-radius: 8px; color: var(--ink); font-size: .875rem;
-}
-.shell-search-list a svg { color: var(--muted); }
-.shell-search-list a span { flex: 1; }
-.shell-search-list a small { color: var(--muted); }
-.shell-search-list a:hover, .shell-search-list a:focus-visible { background: var(--primary-soft); color: var(--primary); }
-.shell-search-empty { display: grid; justify-items: center; gap: .4rem; padding: 2.5rem .5rem; color: var(--muted); text-align: center; }
-.shell-search-empty strong { color: var(--ink); }
 .shell-skip:focus-visible, .shell-brand:focus-visible, .shell-nav-link:focus-visible, .shell-tab:focus-visible,
-.shell-icon-button:focus-visible, .shell-search-trigger:focus-visible, .shell-footer a:focus-visible,
-.shell-search-list a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.shell-icon-button:focus-visible, .shell-search-trigger:focus-visible, .shell-footer a:focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 2px;
+}
 
 @media (max-width: 959px) {
   .shell { display: block; }
@@ -265,7 +249,7 @@ html:has(.shell-dialog[open]) { overflow: hidden; }
     padding-block-end: var(--shell-nav-footprint, calc(var(--shell-mobile-nav-height) + env(safe-area-inset-bottom, 0px)));
   }
   .shell-header { --shell-header-height: 60px; gap: .35rem; padding: .35rem clamp(.7rem, 3vw, 2rem); }
-  .shell-header-brand { display: block; }
+  .shell-header-brand { display: block; min-inline-size: 0; }
   .shell-header .shell-menu-trigger { display: inline-flex; }
   .shell-bottom {
     position: fixed;

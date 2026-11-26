@@ -7,6 +7,7 @@ import { Button, InputField, SelectField, StatePanel } from '../../components/ui
 import { findCourse } from '../courses/student/api';
 import { BackLink, chooseTranslation, coursePath, useContentLanguage } from '../courses/student/components';
 import { useEducationData } from '../education/useEducationData';
+import { useBranding } from '../homepage/Branding';
 import { courseCompletion, useLearning } from './local';
 import { LearningPreference } from './Preference';
 import { learningNamespace } from './strings';
@@ -28,9 +29,10 @@ function CertificatePaper({ certificate, recipient, template }: {
   certificate: Certificate; recipient: string; template: 'classic' | 'simple';
 }) {
   const { t, i18n } = useTranslation(learningNamespace);
+  const { branding } = useBranding();
   const date = new Intl.DateTimeFormat(i18n.language, { timeZone: 'UTC', dateStyle: 'long' });
   return <article className={'certificate-paper certificate-' + template}>
-    <Award size={42} aria-hidden="true" /><bdi className="certificate-brand" lang="en">womenriseafg</bdi>
+    <Award size={42} aria-hidden="true" /><bdi className="certificate-brand">{branding.name}</bdi>
     <h2>{t('certificateFor')}</h2>
     {recipient.trim() && <p className="certificate-recipient"><bdi>{recipient.trim()}</bdi></p>}
     <p className="certificate-course" lang={certificate.locale} dir="auto">{certificate.courseTitle}</p>

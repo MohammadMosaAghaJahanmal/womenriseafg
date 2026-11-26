@@ -21,11 +21,11 @@ const locale = Joi.string().trim().max(35).custom((tag: string, helpers) => cano
 const q = Joi.string().trim().max(120).allow('').default('');
 const pageFields = { page: Joi.number().integer().min(1).max(10000).default(1), pageSize: Joi.number().integer().min(1).max(30).default(12) };
 const scope = {
-  q, kind: Joi.string().valid(...discoverableKinds), language: locale,
+  q, kind: Joi.string().valid(...discoverableKinds), language: locale, preferred: locale,
   subjectId: id, categoryId: id, levelId: id, gradeId: id,
 };
 const searchQuery = Joi.object({ ...scope, ...pageFields });
-const suggestionQuery = Joi.object({ q: Joi.string().trim().min(2).max(120).required(), language: locale });
+const suggestionQuery = Joi.object({ q: Joi.string().trim().min(2).max(120).required(), language: locale, preferred: locale });
 const activity = Joi.object({ kind: Joi.string().valid(...activityKinds).required(), id: id.required() });
 const activities = Joi.array().items(activity).max(24).unique((first, second) => first.id === second.id && first.kind === second.kind).default([]);
 const pathFields = {
@@ -86,8 +86,8 @@ export function createDiscoveryRoutes(store: DiscoveryStore, identity: IdentityS
   };
   router.get('/search', validateInput('query', searchQuery), listPublic(false));
   router.get('/search/suggestions', validateInput('query', suggestionQuery), async (_request, response) => {
-    const { q, language } = response.locals.validated.query as { q: string; language?: string };
-    const { items } = await store.search({ q, language, page: 1, pageSize: 6 });
+    const { q, language, preferred } = response.locals.validated.query as Pick<SearchQuery, 'q' | 'language' | 'preferred'>;
+    const { items } = await store.search({ q, language, preferred, page: 1, pageSize: 6 });
     response.json({ items });
   });
   router.get('/learning-paths', validateInput('query', searchQuery), listPublic(true));

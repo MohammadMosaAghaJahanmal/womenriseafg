@@ -1,5 +1,5 @@
 import { CheckCircle2, Play } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Primitives';
@@ -7,6 +7,7 @@ import type { PublicCourse } from '../courses/student/api';
 import { lessonPath, StartLesson } from '../courses/student/components';
 import { useEducationData } from '../education/useEducationData';
 import { listPublishedQuizzes } from '../quizzes/api';
+import { recordCourseOpen } from '../homepage/api';
 import { courseCompletion, rememberResource, savedPosition, syncCourseCompletion, toggleLesson, useLearning, type LearningResource } from './local';
 import { DeviceConsent } from './Preference';
 import { SaveResource } from './SaveResource';
@@ -15,6 +16,12 @@ import { learningNamespace } from './strings';
 export function CourseLearning({ course, title, locale, language }: { course: PublicCourse; title: string; locale: string; language?: string }) {
   const { t, i18n } = useTranslation(learningNamespace);
   const { enabled, completedLessons, recent } = useLearning();
+  const opened = useRef<string | null>(null);
+  useEffect(() => {
+    if (opened.current === course.slug) return;
+    opened.current = course.slug;
+    recordCourseOpen(course.slug);
+  }, [course.slug]);
   const loadQuizzes = useCallback((signal: AbortSignal) =>
     listPublishedQuizzes({ q: '', page: 1, pageSize: 1, courseId: course.id }, signal), [course.id]);
   const quizzes = useEducationData(loadQuizzes).result;

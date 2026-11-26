@@ -22,6 +22,8 @@ import { createQuizStore } from './modules/quizzes/store';
 import { createDiscoveryRoutes } from './modules/discovery/routes';
 import { createDiscoveryStore } from './modules/discovery/store';
 import { createCertificateRoutes } from './modules/certificates/routes';
+import { createHomepageRoutes } from './modules/homepage/routes';
+import { createHomepageStore } from './modules/homepage/store';
 
 function start() {
   const settings = loadSettings();
@@ -52,6 +54,7 @@ function start() {
     quizRoutes: createQuizRoutes(createQuizStore(db), identity, routeOptions),
     discoveryRoutes: createDiscoveryRoutes(createDiscoveryStore(db), identity, routeOptions),
     certificateRoutes: createCertificateRoutes(db, courses, routeOptions),
+    homepageRoutes: createHomepageRoutes(createHomepageStore(db), identity, routeOptions),
     trustedProxies: settings.auth.trustedProxies,
   });
   const server = app.listen(settings.port, settings.host);

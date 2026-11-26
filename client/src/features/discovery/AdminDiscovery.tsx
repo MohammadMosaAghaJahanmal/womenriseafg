@@ -13,7 +13,7 @@ import { activityKinds, adminPath, adminPaths, dailyModes, deletePath, editError
   readDailySettings, saveDailySettings, savePath, searchContent, type ActivityKind, type DailySettings,
   type DiscoveryText, type PathActivity, type PathRecord } from './api';
 import { DiscoveryState } from './Cards';
-import { TaxonomyFilter } from './PublicDiscovery';
+import { TaxonomyFilter } from './TaxonomyFilter';
 import { discoveryNamespace as ns } from './strings';
 
 export const pathsAdminPath = '/admin/discovery/paths';

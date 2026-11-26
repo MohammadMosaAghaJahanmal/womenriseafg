@@ -2,7 +2,9 @@ import { lazy, Suspense, useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import StudentLayout from './layouts/StudentLayout';
-import { HomePage, ExplorePage } from './features/discover/Discover';
+import { ExplorePage } from './features/discover/Discover';
+import HomePage from './features/homepage/HomePage';
+import { useBranding } from './features/homepage/Branding';
 import { DailyLearning } from './features/discovery/Cards';
 import { sectionLabel } from './pages/routes';
 import './pages/strings';
@@ -33,6 +35,7 @@ const LearningPath = lazy(() => import('./features/discovery/PublicDiscovery').t
 
 export default function App() {
   const { pathname } = useLocation();
+  const { branding } = useBranding();
   const { t } = useTranslation(['shell', 'pages', 'auth']);
   useEffect(() => {
     const path = pathname.replace(/\/+$/, '');
@@ -41,10 +44,10 @@ export default function App() {
       '/admin/login': 'admin-login', '/design-preview': 'adminPreview',
     } as const;
     const accountTitle = accountTitles[path as keyof typeof accountTitles];
-    const key = accountTitle ? 'auth:' + accountTitle : path === '' ? 'home' : path === '/explore' ? 'explore' :
-      path === '/admin' || path.startsWith('/admin/') ? 'admin' : sectionLabel(path);
-    document.title = (key ? t(key) : t('pages:notFound')) + ' · womenriseafg';
-  }, [pathname, t]);
+    if (!accountTitle && (path === '/admin' || path.startsWith('/admin/'))) return;
+    const key = accountTitle ? 'auth:' + accountTitle : path === '' ? 'home' : path === '/explore' ? 'explore' : sectionLabel(path);
+    document.title = (key ? t(key) : t('pages:notFound')) + ' · ' + branding.name;
+  }, [pathname, t, branding.name]);
 
   const loading = <p className="p-6" role="status">{t('pages:loading')}</p>;
   return <Routes>

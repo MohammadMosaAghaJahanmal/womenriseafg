@@ -4,12 +4,12 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type K
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { Button, StatePanel } from '../../../components/ui/Primitives';
-import { BackLink, chooseTranslation, localizedNumber, useContentLanguage } from '../../courses/student/components';
+import { BackLink, chooseTranslation, ContentLanguageNotice, localizedNumber, useContentLanguage } from '../../courses/student/components';
 import { useEducationData } from '../../education/useEducationData';
 import { rememberResource, savedPosition, useLearning, type LearningResource } from '../../engagement/local';
 import { openPdf } from '../../pdf/openPdf';
 import { bookFile, bookPath, readBook, type PublicBook } from './api';
-import { LibraryBack, LibraryState } from './Components';
+import { BookLanguage, LibraryBack, LibraryState } from './Components';
 import { libraryNamespace } from './strings';
 
 const zoomSteps = [0.5, 0.67, 0.8, 1, 1.25, 1.5, 2, 2.5, 3];
@@ -279,6 +279,8 @@ export default function BookReader() {
   return <div className="learn-page library-page library-reader-page">
     <BackLink to={bookPath(slug, false, language.explicit)}>{t('backToBook')}</BackLink>
     <h1 lang={title.locale} dir="auto">{title.title}</h1>
+    <ContentLanguageNotice preferred={language.preferred} actual={title.locale} />
+    <p className="learn-muted">{t('language')} · <BookLanguage locale={result.data.contentLanguage} /></p>
     <BookDocument key={slug} book={result.data} title={title.title} titleLanguage={title.locale} />
   </div>;
 }
