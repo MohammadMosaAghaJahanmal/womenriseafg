@@ -1,5 +1,5 @@
-import { useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactElement, type ReactNode, type SelectHTMLAttributes } from 'react';
-import * as Dialog from '@radix-ui/react-dialog';
+import { createContext, useContext, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type MouseEvent, type ReactElement, type ReactNode, type SelectHTMLAttributes } from 'react';
+import { createPortal } from 'react-dom';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Slot } from '@radix-ui/react-slot';
@@ -14,6 +14,7 @@ const buttonVariants = cva('ui-btn', {
   variants: { variant: { primary: 'ui-btn--primary', secondary: 'ui-btn--secondary', ghost: 'ui-btn--ghost' } },
   defaultVariants: { variant: 'primary' },
 });
+const PanelContext = createContext<{ close: () => void; container: HTMLDialogElement | null } | undefined>(undefined);
 
 export function Button({ variant, asChild = false, type = 'button', className, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
   const Component = asChild ? Slot : 'button';
@@ -21,11 +22,12 @@ export function Button({ variant, asChild = false, type = 'button', className, .
 }
 
 export function IconButton({ label, children, ...props }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & { label: string }) {
+  const panel = useContext(PanelContext);
   return (
     <Tooltip.Provider delayDuration={400}>
       <Tooltip.Root>
         <Tooltip.Trigger asChild><Button {...props} variant="ghost" className="ui-icon-btn" aria-label={label}>{children}</Button></Tooltip.Trigger>
-        <Tooltip.Portal><Tooltip.Content className="ui-tooltip" sideOffset={6}>{label}</Tooltip.Content></Tooltip.Portal>
+        <Tooltip.Portal container={panel?.container}><Tooltip.Content className="ui-tooltip" sideOffset={6}>{label}</Tooltip.Content></Tooltip.Portal>
       </Tooltip.Root>
     </Tooltip.Provider>
   );
@@ -45,9 +47,10 @@ export function InputField({ label, id: providedId, ...props }: InputHTMLAttribu
   return <label className="ui-field" htmlFor={id}><span>{label}</span><span className="ui-input-wrap">{props.type === 'search' && <Search size={17} aria-hidden="true" />}<input {...props} id={id} /></span></label>;
 }
 
-export function SelectField({ label, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
-  const id = useId();
-  return <label className="ui-field" htmlFor={id}><span>{label}</span><span className="ui-select-wrap"><select {...props} id={id}>{children}</select><ChevronDown size={15} aria-hidden="true" /></span></label>;
+export function SelectField({ label, id: providedId, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
+  const generatedId = useId();
+  const id = providedId ?? generatedId;
+  return <div className="ui-field"><label htmlFor={id}>{label}</label><span className="ui-select-wrap"><select {...props} id={id}>{children}</select><ChevronDown size={15} aria-hidden="true" /></span></div>;
 }
 
 export function StatePanel({ kind, title, description, children }: { kind: 'loading' | 'empty' | 'error'; title: string; description?: string; children?: ReactNode }) {
@@ -60,24 +63,79 @@ export function StatePanel({ kind, title, description, children }: { kind: 'load
   </div>;
 }
 
+function onBackdrop(event: MouseEvent<HTMLDialogElement>) {
+  if (event.target !== event.currentTarget) return false;
+  const { left, right, top, bottom } = event.currentTarget.getBoundingClientRect();
+  return event.clientX < left || event.clientX > right || event.clientY < top || event.clientY > bottom;
+}
+
 export function PanelDialog({ title, description, trigger, closeLabel, children, drawer = false, open, onOpenChange }: {
   title: string; description?: string; trigger: ReactElement; closeLabel: string; children: ReactNode; drawer?: boolean;
   open?: boolean; onOpenChange?: (value: boolean) => void;
 }) {
-  return <Dialog.Root open={open} onOpenChange={onOpenChange}>
-    <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>
-    <Dialog.Portal><Dialog.Overlay className="ui-overlay" />
-      <Dialog.Content className={drawer ? 'ui-dialog ui-drawer' : 'ui-dialog'} {...(!description ? { 'aria-describedby': undefined } : {})}>
-        <div className="ui-dialog-heading"><Dialog.Title>{title}</Dialog.Title>
-          <Dialog.Close asChild><button className="ui-btn ui-btn--ghost ui-icon-btn" type="button" aria-label={closeLabel}><X size={20} /></button></Dialog.Close>
+  const id = useId();
+  const panel = useRef<HTMLDialogElement>(null);
+  const startedOnBackdrop = useRef(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const shown = open ?? localOpen;
+  const titleId = id + '-title';
+  const descriptionId = id + '-description';
+
+  function change(next: boolean) {
+    if (open === undefined) setLocalOpen(next);
+    onOpenChange?.(next);
+  }
+
+  useLayoutEffect(() => {
+    const dialog = panel.current;
+    if (!shown || !dialog) return;
+    const owner = dialog.ownerDocument;
+    const opener = owner.activeElement;
+    const main = opener?.closest('main');
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      // A successful operation can replace its trigger during this commit.
+      if (main) queueMicrotask(() => {
+        if (!opener?.isConnected && main.isConnected && owner.activeElement === owner.body) {
+          main.focus({ preventScroll: true });
+        }
+      });
+    };
+  }, [shown]);
+
+  return <>
+    <Slot aria-haspopup="dialog" aria-expanded={shown} aria-controls={id} onClick={event => {
+      if (event.defaultPrevented) return;
+      event.currentTarget.focus({ preventScroll: true });
+      change(true);
+    }}>{trigger}</Slot>
+    {createPortal(<dialog ref={panel} id={id} className={drawer ? 'ui-dialog ui-drawer' : 'ui-dialog'}
+      aria-labelledby={shown ? titleId : undefined} aria-describedby={shown && description ? descriptionId : undefined}
+      onCancel={event => { event.preventDefault(); change(false); }}
+      onPointerDown={event => { startedOnBackdrop.current = onBackdrop(event); }}
+      onClick={event => {
+        if (startedOnBackdrop.current && onBackdrop(event)) change(false);
+        startedOnBackdrop.current = false;
+      }}>
+      {shown && <PanelContext.Provider value={{ close: () => change(false), container: panel.current }}>
+        <div className="ui-dialog-heading"><h2 id={titleId}>{title}</h2>
+          <DialogClose className="ui-btn ui-btn--ghost ui-icon-btn" aria-label={closeLabel}><X size={20} aria-hidden="true" /></DialogClose>
         </div>
-        {description && <Dialog.Description className="ui-dialog-copy">{description}</Dialog.Description>}{children}
-      </Dialog.Content>
-    </Dialog.Portal>
-  </Dialog.Root>;
+        {description && <p id={descriptionId} className="ui-dialog-copy">{description}</p>}{children}
+      </PanelContext.Provider>}
+    </dialog>, document.body)}
+  </>;
 }
 
-export const DialogClose = Dialog.Close;
+export function DialogClose({ asChild = false, type = 'button', onClick, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }) {
+  const panel = useContext(PanelContext);
+  const Component = asChild ? Slot : 'button';
+  return <Component {...props} type={asChild ? undefined : type} onClick={event => {
+    onClick?.(event);
+    if (!event.defaultPrevented) panel?.close();
+  }} />;
+}
 
 export function SectionTabs({ label, value, onValueChange, dir, items }: {
   label: string; value: string; onValueChange: (value: string) => void; dir: 'ltr' | 'rtl';

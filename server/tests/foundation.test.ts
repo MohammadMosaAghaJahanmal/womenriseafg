@@ -18,10 +18,12 @@ let dbAvailable = true;
 let checks = 0;
 const fingerprintedSource = '/* fingerprinted asset */'.repeat(30);
 const offlineSource = '<main>Offline fallback test</main>';
+const applicationLog: string[] = [];
 
 before(async () => {
   directory = await mkdtemp(path.join(tmpdir(), 'womenriseafg-static-'));
   await mkdir(path.join(directory, 'assets'));
+  await mkdir(path.join(directory, 'licenses'));
   await writeFile(path.join(directory, 'index.html'), '<main>Foundation test</main>');
   await writeFile(path.join(directory, 'assets', 'app.js'), '/* asset */');
   const fingerprintedPath = path.join(directory, 'assets', 'app-Ab12cDe3.js');
@@ -32,11 +34,15 @@ before(async () => {
   await writeFile(path.join(directory, 'manifest.webmanifest'), '{"name":"womenriseafg"}');
   await writeFile(path.join(directory, 'offline.html'), offlineSource);
   await writeFile(path.join(directory, 'offline.html.gz'), gzipSync(offlineSource));
+  await writeFile(path.join(directory, 'licenses', 'PDFjs-Apache-2.0.txt'), 'Public licence text');
   await writeFile(path.join(directory, '.env'), 'blocked fixture');
+  await writeFile(path.join(directory, 'backup.sql'), 'blocked fixture');
+  await writeFile(path.join(directory, 'assets', 'app.js.map'), 'blocked fixture');
+  await writeFile(path.join(directory, 'assets', 'internal.json'), 'blocked fixture');
   const app = createApp({
     publicDirectory: directory,
     production: true,
-    logger: pino({ level: 'silent' }),
+    logger: pino({ base: undefined }, { write: line => applicationLog.push(line) }),
     checkDatabase: async () => {
       checks++;
       if (!dbAvailable) throw new Error('sensitive database diagnostic');
@@ -120,7 +126,7 @@ test('readiness reports availability, redacts failures and recovers on a subsequ
 });
 
 test('the offline shell revalidates stable URLs and keeps private navigation out of HTTP caches', async () => {
-  const requests = ['/sw.js', '/manifest.webmanifest', '/offline.html', '/assets/app.js', '/downloads'];
+  const requests = ['/sw.js', '/manifest.webmanifest', '/offline.html', '/assets/app.js'];
   for (const endpoint of requests) {
     const response = await fetch(origin + endpoint);
     assert.equal(response.status, 200, endpoint);
@@ -128,15 +134,19 @@ test('the offline shell revalidates stable URLs and keeps private navigation out
   }
   const fingerprinted = await fetch(origin + '/assets/app-Ab12cDe3.js');
   assert.equal(fingerprinted.headers.get('cache-control'), 'public, max-age=31536000, immutable');
-  for (const endpoint of ['/admin', '/login', '/register', '/account', '/design-preview', '/courses/study/certificate']) {
+  for (const endpoint of ['/admin', '/login', '/register', '/account', '/design-preview', '/courses/study/certificate',
+                          '/downloads', '/downloads/stage12-fixture', '/my-learning', '/saved', '/settings', '/certificates/verify/fixture']) {
     const response = await fetch(origin + endpoint);
     assert.equal(response.status, 200, endpoint);
     assert.equal(response.headers.get('cache-control'), 'no-store', endpoint);
+    assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow', endpoint);
     assert.equal(response.headers.get('content-encoding'), null, endpoint);
   }
   const offline = await fetch(origin + '/downloads');
   const policy = offline.headers.get('content-security-policy') ?? '';
   assert.match(policy, /media-src 'self' blob:/);
+  assert.match(policy, /worker-src 'self'/);
+  assert.match(policy, /frame-src 'none'/);
   assert.match(policy, /object-src 'none'/);
 });
 
@@ -201,6 +211,9 @@ test('public build and direct browser navigation both serve successfully', async
   const asset = await fetch(origin + '/assets/app.js');
   assert.equal(asset.status, 200);
   assert.equal(await asset.text(), '/* asset */');
+  const license = await fetch(origin + '/licenses/PDFjs-Apache-2.0.txt');
+  assert.equal(license.status, 200);
+  assert.equal(await license.text(), 'Public licence text');
 });
 
 test('missing API, media, assets and private paths never receive the SPA shell', async () => {
@@ -213,6 +226,27 @@ test('missing API, media, assets and private paths never receive the SPA shell',
   const notHtml = await fetch(origin + '/lesson/example', { headers: { accept: 'application/json' } });
   assert.equal(notHtml.status, 404);
   assert.equal((await fetch(origin + '/', { method: 'POST' })).status, 404);
+});
+
+test('unapproved build artifacts are not exposed inside the public directory', async () => {
+  for (const endpoint of ['/backup.sql', '/assets/app.js.map', '/assets/internal.json']) {
+    const response = await fetch(origin + endpoint);
+    assert.equal(response.status, 404, endpoint);
+    assert.doesNotMatch(await response.text(), /blocked fixture/);
+  }
+});
+
+test('request logging omits URL values, referrers, cookies and request bodies', async () => {
+  const response = await fetch(origin + '/api/v1/health?query=fixture-query-value', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Cookie': 'session=fixture-cookie-value', 'Referer': 'https://example.test/fixture-reference' },
+    body: JSON.stringify({ text: 'fixture-body-value' }),
+  });
+  await response.text();
+  const id = response.headers.get('x-request-id');
+  const entry = applicationLog.map(line => JSON.parse(line)).find(log => log.requestId === id);
+  assert.equal(entry?.event, 'request_completed');
+  assert.doesNotMatch(JSON.stringify(entry), /fixture-(query-value|cookie-value|reference|body-value)/);
 });
 
 test('malformed encoded paths return sanitized 400 responses', async () => {

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useForm, type FieldError } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { z } from 'zod';
+import { z } from '../../validation';
 import { Button, Card, InputField, SelectField } from '../../components/ui/Primitives';
 import { languageNames, languages } from '../../i18n';
 import { useEducationData } from '../education/useEducationData';

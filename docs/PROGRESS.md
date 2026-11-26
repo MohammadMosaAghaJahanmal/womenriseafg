@@ -627,3 +627,64 @@ The built site uses the existing single-host Node and MySQL architecture. Deploy
 Stage 12 covers security, privacy, accessibility, and quality assurance. It requires separate approval.
 
 **STAGE 11 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**
+
+
+## Stage 12 — Security, privacy, accessibility, and quality assurance
+
+**Completed on 26 November 2026.** Stage 12 reviewed and hardened the existing platform. Free guest learning, optional learner accounts, restricted administration, content review, independent interface and content languages, and opt-in local learning were exercised with isolated fixtures.
+
+### Security and privacy
+
+- The production static server now allowlists public build assets. Regression coverage checks that licence notices, generated scripts and media assets remain available and that unexpected backups, source maps and internal build metadata return 404.
+- Account, administrator, certificate and local-learning pages use `Cache-Control: no-store` and `X-Robots-Tag: noindex, nofollow`. The content security policy restricts workers to the site's own origin and blocks frames. Browser-side Zod validation uses its standard parser, so strict CSP can stay enabled without a runtime code-generation exception. [Zod compilation documentation](https://zod.dev/compile)
+- Same-origin logout expires the browser credential even if the database cannot complete revocation. A locked transaction reads and revokes the session, so concurrent logout requests emit one successful administrator audit entry. The API rejects incomplete Unicode characters before hashing passwords. The administrator CLI validates UTF-8 input and usernames before hashing or normalization. [OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
+- Reviewed server-side administrator grants, validated inputs, bound SQL parameters, session expiry, origin and content-type checks, request-size and credential limits, publication and file permissions, and logging. Tests verified secure HTTP-only session cookies, anonymous access to published content, learner denial from administrator APIs, and omission of query values, cookies, referrers and bodies from request logs. [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
+
+### Accessibility and learner experience
+
+- Shared dialogs use native modality and stylesheet-based scroll locking. They keep focus inside while open, return focus to the trigger on close, and focus the main landmark if an administrator action removes the trigger. Select controls have explicit labels, mobile navigation leaves focused controls visible, and the desktop breadcrumb divider mirrors in RTL.
+- Downloads checks the complete public offline shell and offers to restore missing files when the browser evicts part of it. Browser verification covered partial and full eviction, explicit opt-in, cold offline navigation, saved video playback and PDF export, and local data clearing across reloads.
+- Verified the original 12 design reference files against their SHA-256 baseline. The accessibility review used WCAG 2.2 AA as its target. [WCAG 2.2](https://www.w3.org/TR/WCAG22/)
+
+### Files and database
+
+| Area | Files |
+| --- | --- |
+| Production HTTP policy and regression coverage | `server/src/app.ts`, `server/tests/foundation.test.ts` |
+| Session and password handling | `server/src/identity/cli.ts`, `server/src/identity/store.ts`, `server/src/modules/auth/credentials.ts`, `server/src/modules/auth/routes.ts`, `server/tests/identity.integration.test.ts` |
+| Keyboard and accessible controls | `client/src/components/ui/Primitives.tsx`, `client/src/components/ui/primitives.css`, `client/src/layouts/StudentLayout.tsx`, `client/src/layouts/shell.css`, `client/src/features/admin/admin.css`, `client/src/styles.css` |
+| CSP-compatible validation | `client/src/validation.ts`, `client/src/features/auth/AuthPages.tsx`, `client/src/features/auth/api.ts`, `client/src/features/engagement/local.ts`, `client/src/features/media/MediaUpload.tsx` |
+| Offline shell integrity | `client/src/sw.ts`, `client/src/features/pwa/shell.ts` |
+| Dependencies and operating notes | `client/package.json`, `package-lock.json`, `README.md`, `docs/PROGRESS.md` |
+
+Stage 12 requires no MySQL migration or IndexedDB upgrade. The existing MySQL migrations applied successfully and reported current on rerun. Server updates and browser checks used synthetic data on isolated MySQL 8.0.31 and private local storage. Removed the unused Radix dialog dependency from the client.
+
+### Verification
+
+The commands below ran from the repository in Node 22.14.0 with npm 11.21.3. `$work` refers to the chat's private scratch directory, which held the Chrome harnesses and disposable data.
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck`, `git diff --check` | Passed. |
+| `npm test` with `WOMENRISEAFG_IDENTITY_TEST=1` and the isolated MySQL connection | 35 passed, 0 failed, 0 skipped. Covered validation, permissions, log redaction, session lifecycle and concurrency, published catalogs, uploads, media rights, ranges and quiz grading. Separate CLI probes passed for malformed UTF-8 and out-of-policy usernames. |
+| `npm run build`, `npm run dev`, and `node app.js` through a local HTTPS gateway | Both workspaces built. Dev HTML and proxied readiness returned 200. The production entry passed readiness and served the compiled site. Workbox emitted 20 approved precache entries totaling 931.58 KiB. |
+| `node $work/stage12-identity-browser.cjs` | Chrome verified guest learning, learner registration, generic failed sign-in, valid Unicode sign-in, secure cookie settings, administrative denial and logout under the production CSP. |
+| `node $work/stage12-learner-flow.cjs` and `node $work/stage12-state-check.cjs` | Verified progress opt-in and clearing, continue learning, bookmarks, all four quiz question types, retake, path completion, video seeking and resume, loaded caption cues and transcript, PDF reading and resume, both certificate layouts and verification privacy, and search loading, empty, error and retry states. |
+| `node $work/stage12-links.cjs` and `node $work/stage12-cache-check.cjs` | Verified 30 homepage destinations, 86 public build files, three manifest icons, Daily Learning navigation and expected 401 and 404 responses. The main script was 171,488 bytes with Brotli and 550,327 bytes with identity encoding. The worker revalidated and private HTML and API responses used no-store. |
+| `node $work/stage12-offline-flow.cjs`, `node --import tsx $work/stage12-pwa-integrity.cjs` and `node $work/stage11-offline-store.cjs` | Verified permissions, transfers and quota rollback, cold offline reloads and deep links, partial and full shell repair, private route exclusions, media playback and export, cross-tab removal and clearing, retry and reconnect. Installation support used a simulated Chrome install prompt. |
+| `node $work/stage12-multilingual-browser.cjs`, `node $work/stage12-browser-layout.cjs`, `node $work/stage12-shared-a11y.cjs`, and `node $work/stage12-drawers.cjs` | 144 route checks, 24 homepage and 24 Downloads viewport checks, three localized offline fallbacks, and 45 axe scans with zero violations on tested states. Keyboard checks verified skip navigation, focus on mobile, modal naming and closure, RTL drawers and focus after an administrator form refresh. The drawer harness used intercepted administrator responses. |
+| `npm audit` and `npm audit --omit=dev` | Both reported zero known vulnerabilities at the time of the check. |
+
+The cold Chrome mobile benchmark (`node $work/stage12-mobile-performance.cjs`) used a 390 × 844 viewport, 200 ms network latency, 200 KiB/s download, 90 KiB/s upload, and 4× CPU throttling. With the browser cache disabled and the worker bypassed, data-saving mode reduced transfer from 497,818 to 477,127 bytes and measured LCP from 3.244 to 2.972 seconds. Measured CLS was 0.092 in both modes. These single-run laboratory figures describe the test fixture. The Vite build still reports upstream Zod annotation notices and bundle-size warnings.
+
+The development server, compiled app, HTTPS gateway and isolated MySQL instance were stopped. Their loopback ports were verified closed and temporary credentials were removed.
+
+### Hosting and verification limits
+
+The tested production build uses the existing same-origin Node and MySQL architecture. Live cPanel and Passenger deployment, proxy behavior under the hosting provider, performance under live traffic, other browser engines, native installation on a physical device, and screen-reader testing remain unverified. Full WCAG conformance requires broader manual verification. The existing credential limit operates per source IP and per Node worker. Upload checks validate supported formats and publication still requires human review.
+
+### Next stage
+
+Stage 13 covers shared hosting deployment preparation. It requires separate owner approval.
+
+**STAGE 12 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**

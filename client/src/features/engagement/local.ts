@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { z } from 'zod';
+import { z } from '../../validation';
 
 export const learningStorageKey = 'womenriseafg.learning.v1';
 const maxList = 150;

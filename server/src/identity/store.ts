@@ -132,6 +132,7 @@ export function createIdentityStore(db: Sequelize) {
     },
 
     async revokeSession(tokenHash: string) {
+      // Read the session and delete it under one lock so only one request can audit the logout.
       return db.transaction(async transaction => {
         const session = await Session.findByPk(tokenHash, {
           attributes: ['tokenHash', 'userId', 'expiresAt', 'adminScope'],

@@ -9,7 +9,6 @@ import { defineConfig, loadEnv, type Manifest, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
-const buildManifest = new URL('./dist/.vite/manifest.json', import.meta.url);
 const offlineEntry = 'src/features/offline/OfflinePage.tsx';
 const compressBrotli = promisify(brotliCompress);
 const compressGzip = promisify(gzip);
@@ -38,7 +37,7 @@ function precompressedFiles(): Plugin {
   };
 }
 
-async function offlineFiles() {
+async function offlineFiles(buildManifest: string) {
   const manifest = JSON.parse(await readFile(buildManifest, 'utf8')) as Manifest;
   const files = new Set(['index.html', 'offline.html', 'offline-fallback.css', 'offline-fallback.js', 'favicon.svg',
     'icons/app-192.png', 'icons/app-512.png', 'icons/app-maskable.png']);
@@ -64,9 +63,17 @@ async function offlineFiles() {
 
 export default defineConfig(({ mode }) => {
   const { PORT = '3000' } = loadEnv(mode, repositoryRoot, 'PORT');
+  let buildManifest: string;
+  const manifestLocation: Plugin = {
+    name: 'womenriseafg-manifest-location',
+    apply: 'build',
+    configResolved(config) {
+      buildManifest = path.resolve(config.root, config.build.outDir, '.vite/manifest.json');
+    },
+  };
 
   return {
-    plugins: [react(), tailwindcss(), VitePWA({
+    plugins: [react(), tailwindcss(), manifestLocation, VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
@@ -92,7 +99,7 @@ export default defineConfig(({ mode }) => {
         globPatterns: ['index.html', 'offline.html', 'offline-fallback.{css,js}', 'favicon.svg',
           'icons/app-*.png', 'assets/*.{css,js,mjs,woff2}'],
         manifestTransforms: [async entries => {
-          const files = await offlineFiles();
+          const files = await offlineFiles(buildManifest);
           const manifest = entries.filter(entry => files.has(entry.url));
           if (manifest.length !== files.size) throw new Error('The offline app shell contains missing build assets.');
           return { manifest, warnings: [] };

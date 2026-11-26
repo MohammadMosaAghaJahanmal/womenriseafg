@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { access } from 'node:fs/promises';
+import { isIP } from 'node:net';
 import path from 'node:path';
 import express, { type Express, type Router } from 'express';
 import helmet from 'helmet';
 import type { Logger } from 'pino';
+import { isPublicAsset } from './config/staticAssets';
 import { errorHandler, notFound } from './middleware/errors';
 import { createHealthRoutes } from './modules/health/routes';
 
@@ -23,12 +25,14 @@ interface AppOptions {
   certificateRoutes?: Router;
   homepageRoutes?: Router;
   trustedProxies?: string[];
+  passengerSocket?: () => boolean;
 }
 
 const privateRoots = /^\/(?:api|media|uploads?|storage|server|client|src|docs|node_modules)(?:\/|$)/i;
-const privateNavigation = /^\/(?:admin|account|login|register|design-preview|certificates|courses\/[^/]+\/certificate)(?:\/|$)/i;
+const privateNavigation = /^\/(?:admin|account|login|register|design-preview|certificates|courses\/[^/]+\/certificate|downloads|my-learning|saved|settings)(?:\/|$)/i;
 const fingerprintedAsset = /^assets\/[a-zA-Z0-9_.-]+-[a-zA-Z0-9_-]{8}\.(?:js|mjs|css|woff2|svg|webp|png|jpe?g)$/;
 const compressibleAsset = /^(?:index\.html|offline\.html|offline-fallback\.(?:css|js)|assets\/[a-zA-Z0-9_.-]+-[a-zA-Z0-9_-]{8}\.(?:js|mjs|css))$/;
+const forwardingHeaders = ['forwarded', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-port', 'x-forwarded-proto'];
 
 function staticCache(asset: string) {
   return fingerprintedAsset.test(asset) ? 'public, max-age=31536000, immutable' : 'no-cache';
@@ -37,7 +41,22 @@ function staticCache(asset: string) {
 export function createApp(options: AppOptions): Express {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', options.trustedProxies?.length ? options.trustedProxies : false);
+  const passengerSocket = options.passengerSocket;
+  if (passengerSocket) {
+    app.set('trust proxy', (_address: string, hop: number) => hop === 0 && passengerSocket());
+    app.use((request, _response, next) => {
+      // Passenger authenticates the !~ headers. Replace forwarded values before Express reads them.
+      for (const header of forwardingHeaders) delete request.headers[header];
+      const address = request.headers['!~passenger-client-address'];
+      if (passengerSocket() && typeof address === 'string' && isIP(address)) {
+        request.headers['x-forwarded-for'] = address;
+        if (request.headers['!~passenger-proto'] === 'https') request.headers['x-forwarded-proto'] = 'https';
+      }
+      next();
+    });
+  } else {
+    app.set('trust proxy', options.trustedProxies?.length ? options.trustedProxies : false);
+  }
   app.use(helmet({
     strictTransportSecurity: options.production,
     contentSecurityPolicy: {
@@ -48,6 +67,8 @@ export function createApp(options: AppOptions): Express {
         fontSrc: ["'self'"],
         imgSrc: ["'self'", 'data:', 'blob:'],
         mediaSrc: ["'self'", 'blob:'],
+        workerSrc: ["'self'"],
+        frameSrc: ["'none'"],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: options.production ? [] : null,
@@ -128,13 +149,18 @@ export function createApp(options: AppOptions): Express {
         if (error) next(error);
       });
     });
-    app.use(express.static(publicDirectory, {
+    const servePublicAsset = express.static(publicDirectory, {
       index: false, redirect: false, dotfiles: 'ignore',
       setHeaders(response, filename) {
         const asset = path.relative(publicDirectory, filename).split(path.sep).join('/');
         response.setHeader('Cache-Control', staticCache(asset));
       },
-    }));
+    });
+    app.use((request, response, next) => {
+      const asset = decodeURIComponent(request.path).slice(1);
+      if (!isPublicAsset(asset)) return next();
+      servePublicAsset(request, response, next);
+    });
     app.get('/{*path}', (request, response, next) => {
       const pathname = decodeURIComponent(request.path);
       if (/^\/assets(?:\/|$)/i.test(pathname) || pathname.split('/').some(segment => segment.includes('.')) ||
@@ -142,8 +168,9 @@ export function createApp(options: AppOptions): Express {
         next();
         return;
       }
-      response.set('Cache-Control', privateNavigation.test(pathname) ? 'no-store' : 'no-cache')
-        .sendFile(path.join(publicDirectory, 'index.html'));
+      const privatePage = privateNavigation.test(pathname);
+      if (privatePage) response.set('X-Robots-Tag', 'noindex, nofollow');
+      response.set('Cache-Control', privatePage ? 'no-store' : 'no-cache').sendFile(path.join(publicDirectory, 'index.html'));
     });
   }
 

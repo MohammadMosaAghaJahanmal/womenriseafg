@@ -25,9 +25,12 @@ import { createCertificateRoutes } from './modules/certificates/routes';
 import { createHomepageRoutes } from './modules/homepage/routes';
 import { createHomepageStore } from './modules/homepage/store';
 
+const passengerLoader = globalThis as typeof globalThis & { PhusionPassenger?: { configure?: unknown } };
+
 function start() {
   const settings = loadSettings();
   const production = settings.environment === 'production';
+  const passenger = production && typeof passengerLoader.PhusionPassenger?.configure === 'function';
   if (production && !existsSync(path.join(clientBuild, 'index.html'))) {
     throw new Error('Missing production client build. Run npm run build first.');
   }
@@ -56,9 +59,14 @@ function start() {
     certificateRoutes: createCertificateRoutes(db, courses, routeOptions),
     homepageRoutes: createHomepageRoutes(createHomepageStore(db), identity, routeOptions),
     trustedProxies: settings.auth.trustedProxies,
+    // The loader reports a synthetic loopback address to Express even on its Unix socket.
+    passengerSocket: passenger ? () => typeof server.address() === 'string' : undefined,
   });
   const server = app.listen(settings.port, settings.host);
-  server.once('listening', () => logger.info({ event: 'server_started', port: settings.port }));
+  server.once('listening', () => logger.info({
+    event: 'server_started',
+    ...(passenger ? { transport: 'passenger' } : { port: settings.port }),
+  }));
   server.once('error', () => {
     logger.fatal({ event: 'server_listen_failed' });
     process.exitCode = 1;

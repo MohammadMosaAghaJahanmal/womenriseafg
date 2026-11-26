@@ -27,6 +27,7 @@
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm test --workspace @womenriseafg/server",
     "build": "npm run build --workspaces",
+    "package:deployment": "node scripts/package-deployment.mjs",
     "start": "node app.js",
     "db:migrate": "node server/dist/identity/cli.js migrate",
     "auth:bootstrap": "node server/dist/identity/cli.js bootstrap",

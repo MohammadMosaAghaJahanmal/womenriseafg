@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { z } from 'zod';
+import { z } from '../../validation';
 
 const identity = z.object({ username: z.string().min(1), permissions: z.array(z.string()) });
 const sessionResponse = z.object({ user: identity.nullable() });

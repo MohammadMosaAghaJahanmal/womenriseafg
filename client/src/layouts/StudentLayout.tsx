@@ -151,14 +151,17 @@ export default function StudentLayout() {
   }, []);
   useEffect(() => {
     const nav = bottomNav.current;
-    const layout = nav?.parentElement;
-    if (!nav || !layout) return;
+    if (!nav) return;
+    const root = document.documentElement;
     // Translated labels and larger text can change the fixed bar's height.
     const measured = new ResizeObserver(() => {
-      layout.style.setProperty('--shell-nav-footprint', nav.getBoundingClientRect().height + 'px');
+      root.style.setProperty('--shell-nav-footprint', nav.getBoundingClientRect().height + 'px');
     });
     measured.observe(nav);
-    return () => measured.disconnect();
+    return () => {
+      measured.disconnect();
+      root.style.removeProperty('--shell-nav-footprint');
+    };
   }, []);
 
   function renderSettingsLink(onNavigate?: () => void) {
@@ -187,7 +190,7 @@ export default function StudentLayout() {
     <div className="shell-workspace">
       <header className="shell-header">
         <div className="shell-breadcrumb">
-          <span>{t('academy')}</span><ChevronRight size={14} aria-hidden="true" />
+          <span>{t('academy')}</span><ChevronRight className="ui-direction" size={14} aria-hidden="true" />
           <span>{t(current?.to === '/' ? 'overview' : current?.label ?? (location.pathname === '/search' ? 'search' : 'page'))}</span>
         </div>
         <div className="shell-header-brand"><Brand /></div>

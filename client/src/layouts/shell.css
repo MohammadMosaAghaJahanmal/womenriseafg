@@ -1,7 +1,7 @@
+:root { --shell-mobile-nav-height: calc(80px + env(safe-area-inset-bottom, 0px)); }
 .shell {
   --shell-rail-width: 218px;
   --shell-header-height: 72px;
-  --shell-mobile-nav-height: 80px;
   display: grid;
   grid-template-columns: var(--shell-rail-width) minmax(0, 1fr);
   min-block-size: 100vh;
@@ -214,7 +214,6 @@
   overscroll-behavior: contain;
 }
 .shell-dialog::backdrop { background: color-mix(in srgb, var(--ink) 38%, transparent); }
-html:has(.shell-dialog[open]) { overflow: hidden; }
 .shell-dialog-top { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .shell-dialog-top h2 { margin: 0; font-size: 1.25rem; font-weight: 700; }
 .shell-menu-dialog {
@@ -242,11 +241,12 @@ html:has(.shell-dialog[open]) { overflow: hidden; }
 }
 
 @media (max-width: 959px) {
+  html:has(.shell-bottom) { scroll-padding-block-end: calc(var(--shell-nav-footprint, var(--shell-mobile-nav-height)) + .75rem); }
   .shell { display: block; }
   .shell-rail, .shell-breadcrumb { display: none; }
   .shell-workspace {
     min-block-size: 100vh;
-    padding-block-end: var(--shell-nav-footprint, calc(var(--shell-mobile-nav-height) + env(safe-area-inset-bottom, 0px)));
+    padding-block-end: var(--shell-nav-footprint, var(--shell-mobile-nav-height));
   }
   .shell-header { --shell-header-height: 60px; gap: .35rem; padding: .35rem clamp(.7rem, 3vw, 2rem); }
   .shell-header-brand { display: block; min-inline-size: 0; }

@@ -1,3 +1,4 @@
+import { isUtf8 } from 'node:buffer';
 import pino from 'pino';
 import { createDatabase } from '../config/database';
 import { loadSettings } from '../config/environment';
@@ -32,7 +33,9 @@ async function readPassword() {
     if (length > 1024) throw new CommandError('The supplied password is too long.');
     chunks.push(data);
   }
-  const password = Buffer.concat(chunks).toString('utf8').replace(/\r?\n$/, '');
+  const input = Buffer.concat(chunks);
+  if (!isUtf8(input)) throw new CommandError('The supplied password must use valid UTF-8.');
+  const password = input.toString('utf8').replace(/\r?\n$/, '');
   if (!isStrongPassword(password)) throw new CommandError('The password does not satisfy the account password policy.');
   return password;
 }
@@ -44,8 +47,8 @@ async function run(args: string[]) {
   if (remaining.length || (requiresLogin ? !name : (!takesNoArguments || name !== undefined))) {
     throw new CommandError('Use migrate, bootstrap USERNAME, recover USERNAME, or purge-sessions.');
   }
+  if (requiresLogin && !isValidLogin(name ?? '')) throw new CommandError('The username does not satisfy the account username policy.');
   const login = name ? normalizeLogin(name) : '';
-  if (requiresLogin && !isValidLogin(login)) throw new CommandError('The username does not satisfy the account username policy.');
 
   const passwordHash = requiresLogin ? await hashPassword(await readPassword()) : '';
   const settings = loadSettings();

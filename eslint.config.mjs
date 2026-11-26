@@ -7,7 +7,7 @@ export default typescript.config(
   javascript.configs.recommended,
   ...typescript.configs.recommended,
   {
-    files: ['app.js', '*.mjs', 'server/**/*.{js,cjs,mjs,ts}', 'client/vite.config.ts'],
+    files: ['app.js', '*.mjs', 'scripts/**/*.mjs', 'server/**/*.{js,cjs,mjs,ts}', 'client/vite.config.ts'],
     languageOptions: { globals: globals.node },
   },
   {

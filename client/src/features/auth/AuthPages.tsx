@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Button, Card, InputField, StatePanel } from '../../components/ui/Primitives';
-import { z } from 'zod';
+import { z } from '../../validation';
 import { authenticate, authError, authStatus, checkAdminAccess, readIdentity, signOut, type AuthMode, type Credentials, type Identity } from './api';
 import './strings';
 import './auth.css';

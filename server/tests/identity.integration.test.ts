@@ -12,6 +12,7 @@ import { readSettings } from '../src/config/environment';
 import { migrateIdentity } from '../src/identity/migration';
 import { superAdminRole } from '../src/identity/roles';
 import { createIdentityStore } from '../src/identity/store';
+import { isStrongPassword, loginInput, registerInput } from '../src/modules/auth/credentials';
 import { hashPassword } from '../src/modules/auth/passwords';
 import { createAuthRoutes } from '../src/modules/auth/routes';
 
@@ -26,6 +27,54 @@ async function listen(server: Server) {
   });
   return 'http://127.0.0.1:' + (server.address() as AddressInfo).port;
 }
+
+test('password validation accepts Unicode code points and rejects incomplete characters', () => {
+  const username = 'learner';
+  const password = 'long passphrase with پښتو and 🌱';
+  for (const schema of [registerInput, loginInput]) {
+    assert.equal(schema.validate({ username, password }).value.password, password);
+    assert.ok(schema.validate({ username, password: 'long passphrase \ud800' }).error);
+    assert.ok(schema.validate({ username, password: 'long passphrase \udfff' }).error);
+  }
+  assert.equal(isStrongPassword(password), true);
+  assert.equal(isStrongPassword('long passphrase \ud800'), false);
+});
+
+test('same-origin logout expires the browser cookie when the store cannot revoke the session', async () => {
+  const db = createDatabase(readSettings({}).database);
+  const store = {
+    ...createIdentityStore(db),
+    revokeSession: async () => { throw new Error('private database diagnostic'); },
+  };
+  const logger = pino({ level: 'silent' });
+  const server = createServer(createApp({
+    production: true,
+    trustedProxies: ['127.0.0.1'],
+    logger,
+    checkDatabase: () => db.authenticate(),
+    identityRoutes: createAuthRoutes(store, { origins: [browserOrigin], production: true, logger }),
+  }));
+  try {
+    const url = await listen(server);
+    const response = await fetch(url + '/api/v1/auth/logout', {
+      method: 'POST',
+      headers: {
+        ...tlsHeader, Origin: browserOrigin, 'Content-Type': 'application/json',
+        Cookie: '__Host-womenriseafg_session=' + randomBytes(32).toString('base64url'),
+      },
+      body: '{}',
+    });
+    assert.equal(response.status, 500);
+    assert.match(response.headers.get('set-cookie') ?? '', /^__Host-womenriseafg_session=;.*Expires=/i);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await response.json(), {
+      error: { code: 'INTERNAL_ERROR', message: 'The request could not be completed.' },
+    });
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+    await db.close();
+  }
+});
 
 test('identity and permissions on an isolated migrated MySQL schema', {
   skip: process.env.WOMENRISEAFG_IDENTITY_TEST !== '1' && 'set WOMENRISEAFG_IDENTITY_TEST=1 for a disposable migrated test schema',
@@ -58,7 +107,7 @@ test('identity and permissions on an isolated migrated MySQL schema', {
   }));
   const student = 'learner.' + suffix();
   const admin = 'admin.' + suffix();
-  const password = 'long-passphrase-' + suffix();
+  const password = 'long-passphrase-پښتو🌱-' + suffix();
   const nextPassword = 'another-long-passphrase-' + suffix();
   let bootstrapCreated = false;
 
@@ -176,17 +225,28 @@ test('identity and permissions on an isolated migrated MySQL schema', {
     const recovered = await post('/auth/admin-login', { username: admin, password: nextPassword });
     assert.equal(recovered.status, 200);
     const recoveredCookie = session(recovered);
-    assert.equal((await post('/auth/logout', {}, recoveredCookie, 'https://wrong.example.test')).status, 403);
-    const logout = await post('/auth/logout', {}, recoveredCookie);
-    assert.equal(logout.status, 204);
-    assert.match(logout.headers.get('set-cookie') ?? '', /Expires=/i);
+    const rejectedLogout = await post('/auth/logout', {}, recoveredCookie, 'https://wrong.example.test');
+    assert.equal(rejectedLogout.status, 403);
+    assert.equal(rejectedLogout.headers.get('set-cookie'), null);
+    const logoutResponses = await Promise.all([
+      post('/auth/logout', {}, recoveredCookie),
+      post('/auth/logout', {}, recoveredCookie),
+    ]);
+    for (const logout of logoutResponses) {
+      assert.equal(logout.status, 204);
+      assert.match(logout.headers.get('set-cookie') ?? '', /Expires=/i);
+    }
     assert.equal((await get('/admin/access', recoveredCookie)).status, 401);
     assert.ok(logRecords.some(record => record.event === 'admin_sign_in' &&
       record.result === 'success' && record.actorId === adminUser.id));
-    assert.ok(logRecords.some(record => record.event === 'admin_sign_out' &&
-      record.result === 'success' && record.actorId === adminUser.id));
+    assert.equal(logRecords.filter(record => record.event === 'admin_sign_out' &&
+      record.result === 'success' && record.actorId === adminUser.id).length, 1);
     assert.ok(logRecords.some(record => record.event === 'admin_sign_in' &&
       record.result === 'denied' && !Object.hasOwn(record, 'actorId')));
+    const serializedLogs = JSON.stringify(logRecords);
+    for (const privateValue of [student, admin, password, nextPassword, hash, token]) {
+      assert.ok(!serializedLogs.includes(privateValue), 'credentials, account names and session tokens stay out of logs');
+    }
     let throttled: Response | undefined;
     for (let i = 0; i < 20; i++) {
       // Invalid, inexpensive requests still count against the shared credentials limit.

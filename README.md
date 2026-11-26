@@ -38,7 +38,7 @@ For separate terminals, use `npm run dev:server` and `npm run dev:client`. By de
 
 Run `npm run build` from the root to compile the client to `client/dist/` and the backend to `server/dist/`. Provide the application database credentials, including a nonblank `DB_PASSWORD`, in the server environment or root `.env`. Run `npm start` and open http://127.0.0.1:3000 (or the configured port).
 
-The production entry, `app.js`, selects production mode and starts the compiled Express application. It serves the built client and API from one origin. Use this entry for a compatible cPanel Passenger application. Keep the application root, secret settings and storage outside any directory exposed by the web server. The provider must redirect public HTTP to HTTPS before forwarding requests, overwrite forwarded protocol and client IP headers, and restrict direct access to Node. Set `AUTH_PUBLIC_ORIGIN` and `AUTH_TRUSTED_PROXY_IPS` to match the hosting configuration. Confirm the provider's Node version, Node application manager, MySQL access, filesystem permissions and routing before deployment. Stage 13 covers hosting preparation.
+The production entry, `app.js`, selects production mode and serves the built client and API from one origin. For cPanel, run `npm run package:deployment -- /absolute/private/path/womenriseafg-deployment.tar.gz` to build and package a clean release. The [deployment runbook](docs/DEPLOYMENT.md) covers provider checks, secure Passenger or TCP proxy setup, private storage, database initialization, backups, and rollback.
 
 ## Prepare the application database
 
@@ -75,6 +75,7 @@ Use `auth:recover` in the same command to set a replacement passphrase. Username
 | `npm run typecheck` | Check TypeScript in both workspaces |
 | `npm test` | Run the server regression suite using Node's test runner |
 | `npm run build` | Build both workspaces for production |
+| `npm run package:deployment -- /path/to/release.tar.gz` | Build a fresh cPanel release archive and print its SHA-256 digest |
 | `npm start` | Serve the built application from Express |
 | `npm audit --omit=dev` | Review the installed runtime dependency tree for known advisories |
 | `npm run db:migrate` | Apply and verify identity, education, media, courses, learning media, books, quizzes, discovery, certificates and homepage migrations |
@@ -98,7 +99,7 @@ The server loads the project-root `.env` once at startup and validates it with J
 | `SHORT_MAX_SECONDS` | `90` | Maximum measured length for a Short and its quality variants. Accepts whole seconds from 1 to 600 |
 | `LOG_LEVEL` | `info` | Structured server logging level |
 | `AUTH_PUBLIC_ORIGIN` | Local API and Vite origins | In production, set the exact browser-facing HTTPS origin with no trailing slash. Account writes remain unavailable without it |
-| `AUTH_TRUSTED_PROXY_IPS` | Empty | Comma-separated exact IP addresses of trusted HTTPS proxies. Configure these only after confirming the proxy overwrites forwarded headers |
+| `AUTH_TRUSTED_PROXY_IPS` | Empty | Exact IP addresses for a trusted TCP proxy that overwrites forwarding headers. Leave empty for native Passenger, which supplies its secure metadata over the application socket |
 
 ## Foundation API
 
@@ -205,6 +206,10 @@ Downloads shows progress, cancellation, saved copies, and an estimated storage b
 
 The PWA is available from the built site on HTTPS or a supported loopback origin. The Vite development server provides online development. The service worker is enabled on explicit request and precaches only the public app shell and Downloads route. The build includes Brotli and gzip static variants. Express negotiates those variants and serves versioned assets with immutable caching, while the worker and manifest revalidate and private routes use no-store. Keep the manifest, icons, worker, fallback and compressed files with the rest of the client build.
 
+If the browser removes part of the offline app shell, **Downloads** offers **Enable offline access** again. This restores missing app files when a connection is available. Previously saved lessons and permitted files are managed separately in Downloads.
+
+The production server serves approved build assets and uses `no-store` and `noindex` for account, administrator, certificate and local-learning pages. Keep uploads, source, backups and configuration outside the web document root. The credential rate limit operates per source IP and per Node worker.
+
 ## Repository guide
 
 - `client/src/` holds React Router layouts, shared theme and language preferences, semantic CSS tokens, UI primitives, subject discovery, administration previews and the API status view.
@@ -215,4 +220,4 @@ The PWA is available from the built site on HTTPS or a supported loopback origin
 - `AGENTS.md` records the owner's stage rules.
 - `How the complete website should look/` holds the owner's original local references. The directory is excluded from Git and build artifacts.
 
-The next planned stage is Stage 12, security, privacy, accessibility, and quality assurance. It requires separate owner approval.
+The next planned stage is Stage 14, final production readiness review. It requires separate owner approval.

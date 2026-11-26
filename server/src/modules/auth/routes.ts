@@ -99,6 +99,7 @@ export function createAuthRoutes(store: IdentityStore, options: RouteOptions): R
   router.post('/auth/login', secure, writeAllowed, credentialsLimiter, validateInput('body', loginInput), login(false));
   router.post('/auth/admin-login', secure, writeAllowed, credentialsLimiter, validateInput('body', loginInput), login(true));
   router.post('/auth/logout', secure, writeAllowed, noBodyFields, async (request, response) => {
+    // Expire the browser's credential even if server-side revocation fails.
     response.clearCookie(cookie.name, cookie.options);
     const tokenHash = requestTokenHash(request, cookie.name);
     if (tokenHash) {

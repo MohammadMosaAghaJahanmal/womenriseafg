@@ -26,9 +26,9 @@
 .ui-skeleton i { block-size: .6rem; border-radius: 1rem; background: var(--line); }
 .ui-skeleton i:last-child { inline-size: 56%; }
 .ui-tooltip, .ui-toast { background: var(--ink); color: var(--surface); border-radius: .55rem; padding: .55rem .8rem; font-size: .875rem; box-shadow: 0 .5rem 1.75rem color-mix(in srgb, var(--ink) 15%, transparent); z-index: 90; }
-.ui-overlay { position: fixed; inset: 0; background: color-mix(in srgb, black 55%, transparent); z-index: 70; }
-.ui-dialog { z-index: 71; position: fixed; inset-inline: 0; inset-block-start: 50%; transform: translateY(-50%); margin-inline: auto; inline-size: min(31rem, calc(100% - 2rem)); padding: clamp(1rem, 3vw, 1.75rem); max-block-size: 85dvh; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); box-shadow: 0 1rem 3rem color-mix(in srgb, black 20%, transparent); }
-.ui-drawer { inset-inline: 0 auto; inset-block: 0; margin: 0; transform: none; inline-size: min(19rem, calc(100% - 2.5rem)); max-block-size: 100dvh; border-radius: 0; }
+.ui-dialog::backdrop { background: color-mix(in srgb, black 55%, transparent); }
+.ui-dialog { position: fixed; inset: 0; margin: auto; inline-size: min(31rem, calc(100% - 2rem)); block-size: fit-content; padding: clamp(1rem, 3vw, 1.75rem); max-block-size: min(85dvh, calc(100dvh - 2rem)); overflow: auto; overscroll-behavior: contain; scroll-padding-block: .75rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); box-shadow: 0 1rem 3rem color-mix(in srgb, black 20%, transparent); }
+.ui-drawer { inset-inline: 0 auto; margin: 0; inline-size: min(19rem, calc(100% - 2.5rem)); block-size: 100dvh; max-block-size: 100dvh; border-radius: 0; }
 .ui-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
 .ui-dialog-heading h2 { font-size: 1.3rem; margin: 0; line-height: 1.4; }
 .ui-dialog-copy { margin-block: .7rem 1rem; }
@@ -49,7 +49,7 @@
 [dir="rtl"] .ui-direction { transform: scaleX(-1); }
 @media (prefers-reduced-motion: no-preference) {
   .ui-skeleton i { animation: ui-breathe 1.3s ease-in-out infinite alternate; }
-  .ui-overlay { animation: ui-fade .12s ease-out; }
+  .ui-dialog::backdrop { animation: ui-fade .12s ease-out; }
 }
 @keyframes ui-breathe { from { opacity: .65; } to { opacity: 1; } }
 @keyframes ui-fade { from { opacity: 0; } to { opacity: 1; } }
