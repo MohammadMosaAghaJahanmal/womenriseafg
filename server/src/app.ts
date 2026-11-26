@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import express, { type Express } from 'express';
+import express, { type Express, type Router } from 'express';
 import helmet from 'helmet';
 import type { Logger } from 'pino';
 import { errorHandler, notFound } from './middleware/errors';
@@ -11,6 +11,9 @@ interface AppOptions {
   logger: Logger;
   production: boolean;
   publicDirectory?: string;
+  identityRoutes?: Router;
+  educationRoutes?: Router;
+  trustedProxies?: string[];
 }
 
 const privateRoots = /^\/(?:api|media|uploads?|storage|server|client|src|docs|node_modules)(?:\/|$)/i;
@@ -18,7 +21,7 @@ const privateRoots = /^\/(?:api|media|uploads?|storage|server|client|src|docs|no
 export function createApp(options: AppOptions): Express {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', false);
+  app.set('trust proxy', options.trustedProxies?.length ? options.trustedProxies : false);
   app.use(helmet({
     strictTransportSecurity: options.production,
     contentSecurityPolicy: {
@@ -56,6 +59,8 @@ export function createApp(options: AppOptions): Express {
     next();
   }, express.json({ limit: '32kb' }));
   app.use('/api/v1', createHealthRoutes(options.checkDatabase));
+  if (options.identityRoutes) app.use('/api/v1', options.identityRoutes);
+  if (options.educationRoutes) app.use('/api/v1', options.educationRoutes);
   app.use('/api', notFound);
 
   if (options.publicDirectory) {

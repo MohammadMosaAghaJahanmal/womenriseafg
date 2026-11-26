@@ -57,6 +57,18 @@ test('configuration is typed, anchored to the project and rejects unsafe values 
   assert.equal(readSettings({ NODE_ENV: 'production', DB_PASSWORD: 'test-fixture' }).environment, 'production');
 });
 
+test('authentication accepts a canonical origin and only explicit proxy addresses', () => {
+  const production = { NODE_ENV: 'production', DB_PASSWORD: 'test-fixture' };
+  assert.deepEqual(readSettings(production).auth, { origins: [], trustedProxies: [] });
+  assert.throws(() => readSettings({ ...production, AUTH_PUBLIC_ORIGIN: 'http://example.test' }), /AUTH_PUBLIC_ORIGIN/);
+  assert.throws(() => readSettings({ AUTH_PUBLIC_ORIGIN: 'https://example.test/somewhere' }), /AUTH_PUBLIC_ORIGIN/);
+  assert.throws(() => readSettings({ AUTH_TRUSTED_PROXY_IPS: 'true' }), /AUTH_TRUSTED_PROXY_IPS/);
+  assert.deepEqual(readSettings({
+    ...production, AUTH_PUBLIC_ORIGIN: 'https://example.test', AUTH_TRUSTED_PROXY_IPS: '127.0.0.1, ::1',
+  }).auth, { origins: ['https://example.test'], trustedProxies: ['127.0.0.1', '::1'] });
+  assert.ok(readSettings({ PORT: '4070' }).auth.origins.includes('http://127.0.0.1:4070'));
+});
+
 test('Sequelize is configured with the MySQL dialect and the configured schema', async () => {
   const db = createDatabase(readSettings({ DB_NAME: 'test_schema' }).database);
   try {

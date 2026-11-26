@@ -24,7 +24,11 @@
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm test --workspace @womenriseafg/server",
     "build": "npm run build --workspaces",
-    "start": "node app.js"
+    "start": "node app.js",
+    "db:migrate": "node server/dist/identity/cli.js migrate",
+    "auth:bootstrap": "node server/dist/identity/cli.js bootstrap",
+    "auth:recover": "node server/dist/identity/cli.js recover",
+    "auth:purge-sessions": "node server/dist/identity/cli.js purge-sessions"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

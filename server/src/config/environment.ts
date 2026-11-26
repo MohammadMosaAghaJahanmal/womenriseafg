@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { isIP } from 'node:net';
 import dotenv from 'dotenv';
 import Joi from 'joi';
 
@@ -16,6 +17,8 @@ interface Environment {
   DB_PASSWORD: string;
   LOG_LEVEL: string;
   STORAGE_ROOT: string;
+  AUTH_PUBLIC_ORIGIN?: string;
+  AUTH_TRUSTED_PROXY_IPS: string;
 }
 
 const schema = Joi.object<Environment>({
@@ -33,7 +36,21 @@ const schema = Joi.object<Environment>({
   }),
   LOG_LEVEL: Joi.string().valid('silent', 'fatal', 'error', 'warn', 'info', 'debug', 'trace').default('info'),
   STORAGE_ROOT: Joi.string().trim().min(1).default('storage'),
+  AUTH_PUBLIC_ORIGIN: Joi.string().trim().empty(''),
+  AUTH_TRUSTED_PROXY_IPS: Joi.string().trim().allow('').default(''),
 });
+
+function readAuthOrigin(raw: string | undefined, production: boolean): string | undefined {
+  if (!raw) return;
+  try {
+    const url = new URL(raw);
+    const allowedProtocol = url.protocol === 'https:' || (!production && url.protocol === 'http:');
+    if (allowedProtocol && url.origin === raw) return url.origin;
+  } catch {
+    // Report the setting name without printing a potentially sensitive value.
+  }
+  throw new Error('Invalid environment settings: AUTH_PUBLIC_ORIGIN');
+}
 
 function contains(directory: string, candidate: string): boolean {
   const relative = path.relative(directory, candidate);
@@ -51,12 +68,24 @@ export function readSettings(env: NodeJS.ProcessEnv) {
   if (contains(clientPath, storageRoot) || contains(storageRoot, clientPath)) {
     throw new Error('Invalid environment settings: STORAGE_ROOT overlaps the client directory');
   }
+  const production = value.NODE_ENV === 'production';
+  const origin = readAuthOrigin(value.AUTH_PUBLIC_ORIGIN, production);
+  const trustedProxies = value.AUTH_TRUSTED_PROXY_IPS
+    ? value.AUTH_TRUSTED_PROXY_IPS.split(',').map(address => address.trim())
+    : [];
+  if (trustedProxies.some(address => !isIP(address))) {
+    throw new Error('Invalid environment settings: AUTH_TRUSTED_PROXY_IPS');
+  }
+  const origins = origin ? [origin] : production ? [] : ['localhost', '127.0.0.1'].flatMap(host => [
+    'http://' + host + ':' + value.PORT, 'http://' + host + ':5173',
+  ]);
   return {
     environment: value.NODE_ENV,
     host: value.HOST,
     port: value.PORT,
     logLevel: value.LOG_LEVEL,
     storageRoot,
+    auth: { origins, trustedProxies },
     database: {
       host: value.DB_HOST,
       port: value.DB_PORT,

@@ -10,16 +10,15 @@ export function savedPreference(key: 'language' | 'theme') {
   catch { return null; }
 }
 
-function firstLanguage(): Language {
-  const saved = savedPreference('language');
-  if (languages.some(value => value === saved)) return saved as Language;
+export function browserLanguage(): Language {
   const browser = navigator.languages?.[0] || navigator.language;
   if (/^ps(?:-|$)/i.test(browser)) return 'ps';
   if (/^(fa|prs)(?:-|$)/i.test(browser)) return 'fa-AF';
   return 'en';
 }
 
-const language = firstLanguage();
+const savedLanguage = savedPreference('language');
+const language = languages.some(value => value === savedLanguage) ? savedLanguage as Language : browserLanguage();
 function setDocumentLanguage(value: string) {
   document.documentElement.lang = value;
   document.documentElement.dir = value === 'en' ? 'ltr' : 'rtl';

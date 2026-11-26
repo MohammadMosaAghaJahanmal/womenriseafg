@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Layers3, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Activity, BookOpen, ChevronRight, GraduationCap } from 'lucide-react';
+import { Layers3, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Activity, BookOpen, ChevronRight, GraduationCap, UserRound } from 'lucide-react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Badge, Button, Card, PanelDialog, SelectField, StatePanel } from '../../components/ui/Primitives';
@@ -16,15 +16,47 @@ const destinations = [
 ];
 
 function SidebarLinks({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
-  const { t } = useTranslation('admin');
+  const { t } = useTranslation(['admin', 'auth']);
   return <nav className="admin-links" aria-label={t('nav')}>{destinations.map(({ to, label, Icon }) =>
     <NavLink key={to} to={to} end onClick={onNavigate} aria-label={collapsed ? t(label) : undefined} title={collapsed ? t(label) : undefined}>
       <Icon size={19} aria-hidden="true" /><span className={collapsed ? 'admin-sr' : undefined}>{t(label)}</span>
     </NavLink>)}
+    <Link to="/account" onClick={onNavigate} title={collapsed ? t('auth:account') : undefined}>
+      <UserRound size={19} aria-hidden="true" /><span className={collapsed ? 'admin-sr' : undefined}>{t('auth:account')}</span>
+    </Link>
     <Link className="admin-home-link" to="/" onClick={onNavigate} title={collapsed ? t('student') : undefined}>
       <GraduationCap size={20} aria-hidden="true" /><span className={collapsed ? 'admin-sr' : undefined}>{t('student')}</span>
     </Link>
   </nav>;
+}
+
+function PreferenceFields() {
+  const { t } = useTranslation('admin');
+  const { language, theme, setLanguage, setTheme } = usePreferences();
+  return <div className="admin-prefs">
+    <SelectField label={t('language')} value={language} onChange={e => setLanguage(e.target.value as Language)}>
+      {languages.map(l => <option key={l} value={l} lang={l}>{languageNames[l]}</option>)}
+    </SelectField>
+    <SelectField label={t('theme')} value={theme} onChange={e => setTheme(e.target.value as Theme)}>
+      {(['system', 'light', 'dark'] as const).map(key => <option key={key} value={key}>{t(key)}</option>)}
+    </SelectField>
+  </div>;
+}
+
+export function ComponentPreviewPage() {
+  const { t } = useTranslation('admin');
+  return <div className="admin-shell admin-shell--preview">
+    <a className="admin-skip" href="#preview-main">{t('skip')}</a>
+    <div className="admin-body">
+      <header className="admin-top">
+        <Link className="admin-brand" to="/"><span><BookOpen aria-hidden="true" /></span>
+          <b dir="ltr">womenriseafg</b>
+        </Link>
+        <PreferenceFields />
+      </header>
+      <main className="admin-main" id="preview-main" tabIndex={-1}><ComponentLibrary /></main>
+    </div>
+  </div>;
 }
 
 function Overview() {
@@ -48,7 +80,6 @@ function Overview() {
 
 export default function AdminPage() {
   const { t } = useTranslation('admin');
-  const { language, theme, setLanguage, setTheme } = usePreferences();
   const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [drawer, setDrawer] = useState(false);
@@ -87,14 +118,7 @@ export default function AdminPage() {
           <SidebarLinks onNavigate={() => setDrawer(false)} />
         </PanelDialog></div>
         <nav aria-label={t('breadcrumb')} className="admin-breadcrumb"><Link to="/admin">{t('admin')}</Link><ChevronRight className="ui-direction" size={15} aria-hidden="true" /><span aria-current="page">{t(page)}</span></nav>
-        <div className="admin-prefs">
-          <SelectField label={t('language')} value={language} onChange={e => setLanguage(e.target.value as Language)}>
-            {languages.map(l => <option key={l} value={l} lang={l}>{languageNames[l]}</option>)}
-          </SelectField>
-          <SelectField label={t('theme')} value={theme} onChange={e => setTheme(e.target.value as Theme)}>
-            {(['system', 'light', 'dark'] as const).map(key => <option key={key} value={key}>{t(key)}</option>)}
-          </SelectField>
-        </div>
+        <PreferenceFields />
       </header>
       <main className="admin-main" id="admin-main" tabIndex={-1} ref={main}>
         {page === 'overview' ? <Overview /> : page === 'library' ? <ComponentLibrary /> :

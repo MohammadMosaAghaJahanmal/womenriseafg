@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   ArrowUpRight, Bookmark, BookOpen, BookOpenText, Check, ChevronDown, ChevronRight,
   Compass, Download, Film, FolderSearch, Globe2, GraduationCap, Home, Library, Menu, Monitor,
-  Moon, PanelLeftClose, PanelLeftOpen, Route, Search, Settings, Sparkles, Sun, Video, X,
+  Moon, PanelLeftClose, PanelLeftOpen, Route, Search, Settings, Sparkles, Sun, UserRound, Video, X,
   type LucideIcon,
 } from 'lucide-react';
 import { usePreferences } from '../preferences';
@@ -16,6 +16,7 @@ type Destination = { to: string; label: string; icon: LucideIcon; upcoming?: boo
 const mainLinks: Destination[] = [
   { to: '/', label: 'home', icon: Home },
   { to: '/explore', label: 'explore', icon: Compass },
+  { to: '/account', label: 'account', icon: UserRound },
 ];
 const plannedLinks: Destination[] = [
   { to: '/courses', label: 'courses', icon: BookOpen },
@@ -105,7 +106,7 @@ const closeOnEscape: DialogHTMLAttributes<HTMLDialogElement>['onKeyDown'] = even
 };
 
 export default function StudentLayout() {
-  const { t } = useTranslation('shell');
+  const { t } = useTranslation(['shell', 'auth']);
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [query, setQuery] = useState('');
@@ -207,19 +208,22 @@ export default function StudentLayout() {
       <footer className="shell-footer">
         <span>{t('mission')}</span>
         <div><Link to="/settings">{t('settings')}</Link><Link to="/status">{t('status')}</Link>
-          <Link to="/admin">{t('adminPreview')}</Link></div>
+          <Link to="/design-preview">{t('auth:adminPreview')}</Link><Link to="/admin">{t('admin')}</Link></div>
       </footer>
     </div>
 
     <nav ref={bottomNav} aria-label={t('primaryNav')} className="shell-bottom">
       <span className="shell-bottom-caption" aria-hidden="true">{t('upcoming')}</span>
-      {bottomLinks.map(({ to, label, icon: Icon, upcoming }) =>
-        <NavLink key={to} end to={to} title={upcoming ? t('upcomingItem', { name: t(label) }) : t(label)}
-          aria-label={upcoming ? t('upcomingItem', { name: t(label) }) : t(label)}
+      {bottomLinks.map(({ to, label, icon: Icon, upcoming }) => {
+        const name = t(label === 'library' ? 'libraryShort' : label);
+        const accessibleName = upcoming ? t('upcomingItem', { name }) : name;
+        return <NavLink key={to} end to={to} title={accessibleName}
+          aria-label={accessibleName}
           className={({ isActive }) => 'shell-tab' + (isActive ? ' shell-tab-active' : '')}>
           <Icon size={20} strokeWidth={1.8} aria-hidden="true" />
-          <span>{t(label === 'library' ? 'libraryShort' : label)}</span>
-        </NavLink>)}
+          <span>{name}</span>
+        </NavLink>;
+      })}
     </nav>
 
     <dialog id="shell-mobile-menu" ref={menu} className="shell-dialog shell-menu-dialog"

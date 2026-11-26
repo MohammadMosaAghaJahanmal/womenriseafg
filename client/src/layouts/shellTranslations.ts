@@ -11,7 +11,7 @@ const en = {
   trySearch: 'Try another page name.', close: 'Close', openMenu: 'Open navigation', collapse: 'Collapse sidebar',
   expand: 'Expand sidebar', skip: 'Skip to content', language: 'Interface language', appearance: 'Appearance',
   light: 'Light', dark: 'Dark', system: 'System', brand: 'womenriseafg home',
-  mission: 'Free learning for Afghan girls and women.', preferences: 'Preferences', page: 'Page',
+  mission: 'Free learning for Afghan girls and women.', preferences: 'Preferences', page: 'Page', account: 'Account',
 };
 
 type Messages = typeof en;
@@ -27,7 +27,7 @@ const ps: Messages = {
   trySearch: 'د بلې پاڼې نوم وازمویئ.', close: 'تړل', openMenu: 'مېنو پرانیستل', collapse: 'اړخیز مېنو راټولول',
   expand: 'اړخیز مېنو پراخول', skip: 'منځپانګې ته ورشئ', language: 'د کارن‌مخ ژبه', appearance: 'بڼه',
   light: 'روښانه', dark: 'تیاره', system: 'سیسټم', brand: 'د womenriseafg کورپاڼه',
-  mission: 'د افغان نجونو او ښځو لپاره وړیا زده کړه.', preferences: 'غوراوي', page: 'پاڼه',
+  mission: 'د افغان نجونو او ښځو لپاره وړیا زده کړه.', preferences: 'غوراوي', page: 'پاڼه', account: 'حساب',
 };
 
 const fa: Messages = {
@@ -41,7 +41,7 @@ const fa: Messages = {
   trySearch: 'نام صفحۀ دیگری را جستجو کنید.', close: 'بستن', openMenu: 'باز کردن منو', collapse: 'جمع کردن منوی کناری',
   expand: 'باز کردن منوی کناری', skip: 'رفتن به محتوا', language: 'زبان رابط کاربر', appearance: 'نمایش',
   light: 'روشن', dark: 'تاریک', system: 'سیستم', brand: 'صفحۀ اصلی womenriseafg',
-  mission: 'آموزش رایگان برای دختران و زنان افغان.', preferences: 'تنظیمات نمایش', page: 'صفحه',
+  mission: 'آموزش رایگان برای دختران و زنان افغان.', preferences: 'تنظیمات نمایش', page: 'صفحه', account: 'حساب',
 };
 
 for (const [locale, messages] of Object.entries({ en, ps, 'fa-AF': fa })) {

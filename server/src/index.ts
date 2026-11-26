@@ -4,6 +4,10 @@ import pino from 'pino';
 import { createApp } from './app';
 import { createDatabase } from './config/database';
 import { clientBuild, loadSettings } from './config/environment';
+import { createIdentityStore } from './identity/store';
+import { createAuthRoutes } from './modules/auth/routes';
+import { createEducationRoutes } from './modules/education/routes';
+import { createEducationStore } from './modules/education/store';
 
 function start() {
   const settings = loadSettings();
@@ -13,11 +17,16 @@ function start() {
   }
   const logger = pino({ level: settings.logLevel, base: undefined });
   const db = createDatabase(settings.database);
+  const identity = createIdentityStore(db);
+  const routeOptions = { origins: settings.auth.origins, production, logger };
   const app = createApp({
     production,
     logger,
     checkDatabase: () => db.authenticate(),
     publicDirectory: production ? clientBuild : undefined,
+    identityRoutes: createAuthRoutes(identity, routeOptions),
+    educationRoutes: createEducationRoutes(createEducationStore(db), identity, routeOptions),
+    trustedProxies: settings.auth.trustedProxies,
   });
   const server = app.listen(settings.port, settings.host);
   server.once('listening', () => logger.info({ event: 'server_started', port: settings.port }));

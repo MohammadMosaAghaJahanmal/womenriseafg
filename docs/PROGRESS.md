@@ -129,3 +129,59 @@ The existing single-origin production entry serves the built client, illustratio
 Stage 3 covers database, authentication and authorization. It requires separate owner approval.
 
 **STAGE 2 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**
+
+## Stage 3 — Database, authentication, and authorization
+
+**Completed on 26 November 2026.** Optional student accounts, dedicated administrator sign-in, and server-side authorization work through the existing same-origin application. The guest homepage, subject explorer, and health endpoint remain publicly accessible.
+
+### Implementation
+
+- Students can register with a chosen username and passphrase, sign in, review their account, and sign out. Registration collects no email, phone number, legal name, or profile photograph. English, Pashto, and Dari account screens reuse the existing theme, typography, and layout.
+- Administrator sessions require a successful dedicated sign-in and a current `admin:access` grant. The server checks the session’s scope and the live permission assignments on each protected request. The administration layout and its component route both require authorization.
+- The public Stage 2 gallery moved to `/design-preview`, where it remains usable as a standalone showcase. The student site links to both administration and the design preview. Settings can clear locally stored language and appearance choices.
+- The operator CLI applies migrations, initializes the first super administrator once, recovers active administrator accounts through a replacement passphrase, and removes expired sessions. Recovery revokes all existing sessions for the affected administrator. Bootstrap and recovery take the passphrase on standard input.
+
+### Files and database changes
+
+| Area | Main changes |
+| --- | --- |
+| `server/src/identity/` | Sequelize models, database access, roles and permissions, explicit migrations, bootstrap, recovery, and session cleanup |
+| `server/src/modules/auth/` | Credential validation, password hashing, cookie sessions, permission middleware, and the authentication API |
+| `server/src/app.ts`, `index.ts`, `config/environment.ts`, `.env.example` | API registration, exact public origin validation, and explicit trusted proxy configuration |
+| `client/src/features/auth/`, `client/src/App.tsx` | Localized forms, account session management, routes, and administrator route checks |
+| `client/src/features/admin/`, `layouts/`, `pages/WorkspacePages.tsx`, `preferences.tsx` | Role-gated workspace, public design preview, navigation links, and clearing preferences |
+| Package manifests, root lockfile, `server/tests/`, `README.md`, and this progress log | Dependencies, regression coverage, and operator instructions |
+
+The `001-initial-identity` migration creates `users`, `roles`, `permissions`, `user_roles`, `role_permissions`, and `sessions`, with a migration ledger. It adds a unique username index, join-table keys, foreign keys, and session user and expiry indexes. It seeds seven named roles and two permissions. Guests are represented by the absence of a session. The additive `002-admin-session-scope` migration adds a required Boolean to sessions, defaulting to learner scope. Existing administrator sessions must sign in again to gain administrator scope.
+
+### Security and privacy
+
+Passwords use Node’s asynchronous scrypt with individual salts and a bounded concurrency setting. Session tokens are randomly generated, and MySQL stores only their digests. Production uses host-scoped `HttpOnly`, `Secure`, `SameSite=Strict` cookies and requires HTTPS on account endpoints. JSON account writes check the exact configured origin. Session and permission responses use `Cache-Control: no-store`. [OWASP password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#scrypt) · [OWASP origin verification](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#using-standard-headers-to-verify-origin)
+
+Successful administrator sign-in, sign-out, initialization, and recovery record opaque account IDs in structured logs. Failed sign-in events do not record the attempted username. Browser tests found no session tokens in browser storage and no off-origin requests during the account workflows.
+
+### Verification
+
+| Command or check | Result |
+| --- | --- |
+| `npm run lint` and `npm run typecheck` | Passed |
+| `npm test` with `WOMENRISEAFG_IDENTITY_TEST=1` and disposable MySQL 8.0.31 | 11 passed, 0 failed, 0 skipped. Covered migration concurrency and re-run, permissions, later grants, session scope and expiry, token digests, recovery, logout, origin checks and throttling |
+| `npm run build` | Client and server built. Vite reported two upstream Zod annotation warnings |
+| `npm run dev` | Vite proxy returned 200 for liveness, database readiness, the guest session response, and the administrator login page |
+| Production entry via a local HTTPS proxy | Verified both migrations on an empty schema, migration re-run, one-time bootstrap, rejected weak bootstrap passphrase, cookie flags, recovery, expired-session purge command, and revocation of the prior cookie |
+| Chrome browser integration | Guest browsing and the public gallery, student registration and sign-in, administrator access, sign-out, invalid inputs, malformed session retry, cookie privacy, theme/language preference clearing, all three locales, and eight viewport sizes passed |
+| Chrome accessibility checks | 24 axe scans of registration, student sign-in, administrator sign-in, and Account in three locales at desktop and phone widths reported zero violations. The layout check passed all 96 route, size, and locale combinations. Corrected a Dari mobile Library label mismatch and reran |
+| `npm audit`, `npm audit --omit=dev`, and `git diff --check` | Both audits reported zero known vulnerabilities. The whitespace check passed |
+| Reference integrity | All 12 original reference images matched their recorded SHA-256 hashes |
+
+### Known limits and hosting
+
+Testing used a local MySQL instance and a local HTTPS proxy. Provider-specific cPanel and Passenger behavior still awaits verification. Configure the exact public HTTPS origin, allow only the provider’s verified proxy addresses, and ensure the proxy overwrites forwarding headers. The migration step needs two available MySQL connections. The authentication rate limit is 20 credential requests per IP per 15 minutes in each Node worker, and a worker restart resets its counter. The README covers these requirements and expired-session maintenance. [Express proxy configuration](https://expressjs.com/en/guide/behind-proxies.html)
+
+The production build reports two nonfatal code-comment warnings from Zod. Native-speaker editorial review and testing with learners using assistive technology remain outstanding.
+
+### Next recommended stage
+
+Stage 4 covers educational organization and administration foundation. It requires separate approval.
+
+**STAGE 3 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**

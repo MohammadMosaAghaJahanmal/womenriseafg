@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { usePreferences, type Theme } from '../preferences';
 import { checkApiHealth } from '../services/health';
 import './strings';
 import './workspace.css';
+import '../features/auth/auth.css';
 
 import { sectionLabel } from './routes';
 
@@ -22,8 +23,9 @@ function PreviewPage({ section }: { section: string }) {
 }
 
 export function SettingsPage() {
-  const { t } = useTranslation(['pages', 'shell']);
-  const { language, setLanguage, theme, setTheme } = usePreferences();
+  const { t } = useTranslation(['pages', 'shell', 'auth']);
+  const { language, setLanguage, theme, setTheme, clearPreferences } = usePreferences();
+  const [clearResult, setClearResult] = useState<boolean>();
   return <div className="workspace-page"><h1>{t('shell:settings')}</h1><p className="workspace-intro">{t('settingsIntro')}</p>
     <Card className="workspace-panel workspace-options">
       <SelectField label={t('shell:language')} value={language} onChange={e => setLanguage(e.target.value as Language)}>
@@ -34,6 +36,12 @@ export function SettingsPage() {
       </SelectField>
       <p>{t('follows')}</p>
     </Card><p className="workspace-note">{t('local')}</p>
+    <section className="auth-settings workspace-panel">
+      <h2>{t('auth:clearPreferences')}</h2>
+      <p>{t('auth:clearDescription')}</p>
+      <Button variant="secondary" onClick={() => setClearResult(clearPreferences())}>{t('auth:clearAction')}</Button>
+      {clearResult !== undefined && <p role="status">{t(clearResult ? 'auth:cleared' : 'auth:unavailable')}</p>}
+    </section>
   </div>;
 }
 

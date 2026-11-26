@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { i18n, savedPreference, type Language } from './i18n';
+import { browserLanguage, i18n, savedPreference, type Language } from './i18n';
 
 export type Theme = 'system' | 'light' | 'dark';
 interface Preferences {
@@ -8,6 +8,7 @@ interface Preferences {
   setLanguage: (value: Language) => void;
   theme: Theme;
   setTheme: (value: Theme) => void;
+  clearPreferences: () => boolean;
 }
 const Context = createContext<Preferences | null>(null);
 const scheme = window.matchMedia('(prefers-color-scheme: dark)');
@@ -43,7 +44,18 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     void i18n.changeLanguage(value);
     remember('language', value);
   }
-  return <Context.Provider value={{ theme, setTheme, language: translations.language as Language, setLanguage }}>{children}</Context.Provider>;
+  function clearPreferences() {
+    let removed = true;
+    try {
+      localStorage.removeItem('womenriseafg.language');
+      localStorage.removeItem('womenriseafg.theme');
+    } catch { removed = false; }
+    updateTheme('system');
+    applyTheme('system');
+    void i18n.changeLanguage(browserLanguage());
+    return removed;
+  }
+  return <Context.Provider value={{ theme, setTheme, language: translations.language as Language, setLanguage, clearPreferences }}>{children}</Context.Provider>;
 }
 export function usePreferences() {
   const value = useContext(Context);
