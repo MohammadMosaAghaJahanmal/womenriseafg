@@ -4,6 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import { Button, SelectField, StatePanel } from '../../../components/ui/Primitives';
 import { languageNames, type Language } from '../../../i18n';
+import { useDataSaving } from '../../data-saving/preferences';
 import { preferredName, type EducationRecord } from '../../education/api';
 import { fileUrl, isMissing, type CourseSummary, type LessonKind, type PublicCourse } from './api';
 import { courseNamespace } from './strings';
@@ -35,11 +36,6 @@ export function contentLocale(value?: string | null) {
 
 export function localizedNumber(value: number, locale: string) {
   return new Intl.NumberFormat(locale).format(value);
-}
-
-export function lowDataConnection() {
-  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-  return Boolean(connection?.saveData || /^(?:slow-)?[23]g$/.test(connection?.effectiveType ?? ''));
 }
 
 function languageQuery(language?: string) {
@@ -113,8 +109,9 @@ export function BackLink({ to, children }: { to: string; children: ReactNode }) 
 
 export function CourseCover({ id }: { id: string | null }) {
   const [failed, setFailed] = useState<string>();
+  const { enabled: saving } = useDataSaving();
   return <div className="learn-cover" aria-hidden="true">
-    {id && id !== failed && !lowDataConnection()
+    {id && id !== failed && !saving
       ? <img src={fileUrl(id)} alt="" loading="lazy" decoding="async" onError={() => setFailed(id)} />
       : <BookOpen size={44} strokeWidth={1.3} />}
   </div>;

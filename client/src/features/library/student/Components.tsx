@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Button, StatePanel } from '../../../components/ui/Primitives';
 import { fileUrl } from '../../courses/student/api';
-import { BackLink, learnerLanguageName, lowDataConnection } from '../../courses/student/components';
+import { BackLink, learnerLanguageName } from '../../courses/student/components';
+import { useDataSaving } from '../../data-saving/preferences';
 import { bookFile, bookPath, unavailableBook, type PublicBook } from './api';
 import { libraryNamespace } from './strings';
 import './library.css';
@@ -34,9 +35,10 @@ export function LibraryBack() {
 
 export function BookCover({ id }: { id: string | null }) {
   const [failed, setFailed] = useState<string>();
+  const { enabled: saving } = useDataSaving();
   return <div className="library-cover" aria-hidden="true">
     <div className="library-cover-frame">
-      {id && id !== failed && !lowDataConnection()
+      {id && id !== failed && !saving
         ? <img src={fileUrl(id)} alt="" decoding="async" loading="lazy" onError={() => setFailed(id)} />
         : <BookOpen size={35} strokeWidth={1.5} />}
     </div>

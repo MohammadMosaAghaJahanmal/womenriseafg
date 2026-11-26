@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
+import { brotliCompressSync, gzipSync } from 'node:zlib';
 import pino from 'pino';
 import { createApp } from '../src/app';
 import { createDatabase } from '../src/config/database';
@@ -15,12 +16,22 @@ let origin: string;
 let directory: string;
 let dbAvailable = true;
 let checks = 0;
+const fingerprintedSource = '/* fingerprinted asset */'.repeat(30);
+const offlineSource = '<main>Offline fallback test</main>';
 
 before(async () => {
   directory = await mkdtemp(path.join(tmpdir(), 'womenriseafg-static-'));
   await mkdir(path.join(directory, 'assets'));
   await writeFile(path.join(directory, 'index.html'), '<main>Foundation test</main>');
   await writeFile(path.join(directory, 'assets', 'app.js'), '/* asset */');
+  const fingerprintedPath = path.join(directory, 'assets', 'app-Ab12cDe3.js');
+  await writeFile(fingerprintedPath, fingerprintedSource);
+  await writeFile(fingerprintedPath + '.br', brotliCompressSync(fingerprintedSource));
+  await writeFile(fingerprintedPath + '.gz', gzipSync(fingerprintedSource));
+  await writeFile(path.join(directory, 'sw.js'), '/* worker */');
+  await writeFile(path.join(directory, 'manifest.webmanifest'), '{"name":"womenriseafg"}');
+  await writeFile(path.join(directory, 'offline.html'), offlineSource);
+  await writeFile(path.join(directory, 'offline.html.gz'), gzipSync(offlineSource));
   await writeFile(path.join(directory, '.env'), 'blocked fixture');
   const app = createApp({
     publicDirectory: directory,
@@ -106,6 +117,54 @@ test('readiness reports availability, redacts failures and recovers on a subsequ
   const ready = await fetch(origin + '/api/v1/ready');
   assert.equal(ready.status, 200);
   assert.deepEqual(await ready.json(), { status: 'ready' });
+});
+
+test('the offline shell revalidates stable URLs and keeps private navigation out of HTTP caches', async () => {
+  const requests = ['/sw.js', '/manifest.webmanifest', '/offline.html', '/assets/app.js', '/downloads'];
+  for (const endpoint of requests) {
+    const response = await fetch(origin + endpoint);
+    assert.equal(response.status, 200, endpoint);
+    assert.equal(response.headers.get('cache-control'), 'no-cache', endpoint);
+  }
+  const fingerprinted = await fetch(origin + '/assets/app-Ab12cDe3.js');
+  assert.equal(fingerprinted.headers.get('cache-control'), 'public, max-age=31536000, immutable');
+  for (const endpoint of ['/admin', '/login', '/register', '/account', '/design-preview', '/courses/study/certificate']) {
+    const response = await fetch(origin + endpoint);
+    assert.equal(response.status, 200, endpoint);
+    assert.equal(response.headers.get('cache-control'), 'no-store', endpoint);
+    assert.equal(response.headers.get('content-encoding'), null, endpoint);
+  }
+  const offline = await fetch(origin + '/downloads');
+  const policy = offline.headers.get('content-security-policy') ?? '';
+  assert.match(policy, /media-src 'self' blob:/);
+  assert.match(policy, /object-src 'none'/);
+});
+
+test('built assets negotiate compressed representations and leave ranges and APIs alone', async () => {
+  const target = origin + '/assets/app-Ab12cDe3.js';
+  for (const [accepted, expected] of [
+    ['gzip;q=0.5, br', 'br'], ['gzip, br;q=0', 'gzip'], ['identity', null],
+  ] as const) {
+    const response = await fetch(target, { headers: { 'Accept-Encoding': accepted } });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('vary'), 'Accept-Encoding');
+    assert.equal(response.headers.get('content-encoding'), expected);
+    assert.match(response.headers.get('content-type') ?? '', /javascript/);
+    assert.equal(await response.text(), fingerprintedSource);
+  }
+  const range = await fetch(target, { headers: { Range: 'bytes=0-4', 'Accept-Encoding': 'br' } });
+  assert.equal(range.status, 206);
+  assert.equal(range.headers.get('content-encoding'), null);
+  assert.equal(await range.text(), fingerprintedSource.slice(0, 5));
+  const direct = await fetch(target + '.gz');
+  assert.equal(direct.status, 404);
+  const offline = await fetch(origin + '/offline.html', { headers: { 'Accept-Encoding': 'gzip' } });
+  assert.equal(offline.headers.get('content-encoding'), 'gzip');
+  assert.equal(await offline.text(), offlineSource);
+  const publicApi = await fetch(origin + '/api/v1/health', { headers: { 'Accept-Encoding': 'br, gzip' } });
+  assert.equal(publicApi.headers.get('cache-control'), 'no-store');
+  assert.equal(publicApi.headers.get('content-encoding'), null);
+  assert.equal(publicApi.headers.get('vary'), null);
 });
 
 test('unexpected input and malformed JSON produce safe validation errors', async () => {

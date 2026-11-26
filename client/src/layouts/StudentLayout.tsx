@@ -3,13 +3,15 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useTranslation } from 'react-i18next';
 import {
   Bookmark, BookOpen, CalendarDays, ChevronDown, ChevronRight,
-  ClipboardList, Compass, Film, Globe2, GraduationCap, Home, Library, Menu, Monitor,
+  ClipboardList, Compass, Download, Film, Globe2, GraduationCap, Home, Library, Menu, Monitor,
   Moon, PanelLeftClose, PanelLeftOpen, Route, Search, Settings, Sparkles, Sun, UserRound, Video, X,
   type LucideIcon,
 } from 'lucide-react';
 import { usePreferences } from '../preferences';
 import { languageNames } from '../i18n';
 import { BrandLogo, useBranding } from '../features/homepage/Branding';
+import { OfflineNotice } from '../features/offline/Notice';
+import { useOnlineStatus } from '../features/offline/online';
 import { sectionPath } from '../pages/routes';
 import './shellTranslations';
 import './shell.css';
@@ -28,12 +30,13 @@ const mainLinks: Destination[] = [
   { to: '/daily-learning', label: 'daily', icon: CalendarDays },
   { to: '/saved', label: 'saved', icon: Bookmark },
   { to: '/my-learning', label: 'learning', icon: GraduationCap },
+  { to: '/downloads', label: 'downloads', icon: Download },
   { to: '/account', label: 'account', icon: UserRound },
 ];
 const settingsLink: Destination = { to: '/settings', label: 'settings', icon: Settings };
 const allLinks: Destination[] = [...mainLinks, settingsLink, { to: '/status', label: 'status', icon: Monitor }];
 const bottomLinks = ['/', '/courses', '/shorts', '/library', '/my-learning'].map(to => allLinks.find(link => link.to === to)!);
-const collections = new Set(['/courses', '/videos', '/shorts', '/ai-learning', '/library', '/quizzes', '/learning-paths']);
+const collections = new Set(['/courses', '/videos', '/shorts', '/ai-learning', '/library', '/quizzes', '/learning-paths', '/downloads']);
 const themeIcons = { light: Sun, dark: Moon, system: Monitor } as const;
 
 function Brand({ onClick }: { onClick?: () => void }) {
@@ -105,6 +108,8 @@ export default function StudentLayout() {
   const { t } = useTranslation('shell');
   const location = useLocation();
   const navigate = useNavigate();
+  const online = useOnlineStatus();
+  const connectedRoute = useRef(online ? location.key : null);
   const [collapsed, setCollapsed] = useState(false);
   const menu = useRef<HTMLDialogElement>(null);
   const main = useRef<HTMLElement>(null);
@@ -112,6 +117,11 @@ export default function StudentLayout() {
   const lastPath = useRef(location.pathname);
   const current = allLinks.find(item => item.to === sectionPath(location.pathname));
   const menuClose = () => menu.current?.close();
+  const offlineRoute = !online && sectionPath(location.pathname) !== '/downloads' && connectedRoute.current !== location.key;
+
+  useEffect(() => {
+    if (online) connectedRoute.current = location.key;
+  }, [online, location.key]);
 
   useEffect(() => {
     const shortcut = (event: KeyboardEvent) => {
@@ -192,12 +202,13 @@ export default function StudentLayout() {
             aria-controls="shell-mobile-menu" aria-haspopup="dialog" aria-label={t('openMenu')}><Menu size={21} /></button>
         </div>
       </header>
-      <main id="main-content" ref={main} tabIndex={-1} className="shell-main"><Outlet /></main>
+      <main id="main-content" ref={main} tabIndex={-1} className="shell-main">{offlineRoute ? <OfflineNotice /> : <Outlet />}</main>
       <footer className="shell-footer">
         <div className="shell-footer-brand"><Brand /><p>{t('mission')}</p></div>
         <nav aria-label={t('footerNav')} className="shell-footer-links">
           <Link to="/courses">{t('courses')}</Link><Link to="/library">{t('library')}</Link>
-          <Link to="/settings">{t('settings')}</Link><Link to="/status">{t('status')}</Link><Link to="/admin">{t('admin')}</Link>
+          <Link to="/downloads">{t('downloads')}</Link><Link to="/settings">{t('settings')}</Link>
+          {online && <><Link to="/status">{t('status')}</Link><Link to="/admin">{t('admin')}</Link></>}
         </nav>
       </footer>
     </div>

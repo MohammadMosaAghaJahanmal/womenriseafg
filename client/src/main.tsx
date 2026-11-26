@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './i18n';
+import './features/pwa/shell';
 import './styles.css';
 import { PreferencesProvider } from './preferences';
 import { BrandingProvider } from './features/homepage/Branding';

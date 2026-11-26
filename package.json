@@ -14,6 +14,9 @@
   "overrides": {
     "sequelize": {
       "uuid": "11.1.1"
+    },
+    "workbox-build": {
+      "glob": "14.0.4"
     }
   },
   "scripts": {

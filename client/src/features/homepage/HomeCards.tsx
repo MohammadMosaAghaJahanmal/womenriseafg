@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { fileUrl } from '../courses/student/api';
 import { learnerLanguageName } from '../courses/student/components';
+import { useDataSaving } from '../data-saving/preferences';
 import { useLearning } from '../engagement/local';
 import { SaveResource } from '../engagement/SaveResource';
 import { type HomepageItem, type SectionKey } from './api';
@@ -62,13 +63,14 @@ function PreviewLanguages({ item, requested }: { item: HomepageItem; requested: 
 
 function Card({ item, requested, compact }: { item: HomepageItem; requested: string; compact: boolean }) {
   const { t, i18n } = useTranslation(ns);
+  const { enabled: saving } = useDataSaving();
   const id = useId();
   const Icon = icons[item.kind];
   const href = entryLink(item);
   const number = new Intl.NumberFormat(i18n.language);
   return <article className={'home-card' + (compact ? ' home-card--compact' : '')} data-kind={item.kind} aria-labelledby={id}>
     <div className="home-card-art" aria-hidden="true">
-      {item.imageId ? <img src={fileUrl(item.imageId)} alt="" loading="lazy" decoding="async" />
+      {item.imageId && !saving ? <img src={fileUrl(item.imageId)} alt="" loading="lazy" decoding="async" />
         : <Icon size={30} strokeWidth={1.5} />}
     </div>
     <div className="home-card-body">

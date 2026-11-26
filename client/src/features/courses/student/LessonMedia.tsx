@@ -2,11 +2,12 @@ import { lazy, Suspense, useCallback, useState } from 'react';
 import { Download, ExternalLink, FileText, Headphones, Play, Video } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, SelectField, StatePanel } from '../../../components/ui/Primitives';
+import { useDataSaving } from '../../data-saving/preferences';
 import { useEducationData } from '../../education/useEducationData';
 import type { LearningResource } from '../../engagement/local';
 import { usePlaybackProgress } from '../../engagement/playback';
 import { fetchTranscript, fileUrl, type PublicMedia } from './api';
-import { learnerLanguageName, lowDataConnection } from './components';
+import { learnerLanguageName } from './components';
 import { courseNamespace } from './strings';
 
 function PdfUnavailable() {
@@ -54,7 +55,7 @@ function TranscriptText({ id, locale }: { id: string; locale?: string }) {
   </>;
 }
 
-function Transcripts({ media, locale }: { media: PublicMedia; locale: string }) {
+export function Transcripts({ media, locale }: { media: PublicMedia; locale: string }) {
   const { t } = useTranslation(courseNamespace);
   const [open, setOpen] = useState(false);
   const [selection, setSelection] = useState('');
@@ -76,11 +77,13 @@ function Transcripts({ media, locale }: { media: PublicMedia; locale: string }) 
 
 function Player({ media, locale, study }: { media: PublicMedia; locale: string; study?: LearningResource }) {
   const { t } = useTranslation(courseNamespace);
+  const { enabled: saving } = useDataSaving();
   const video = media.kind === 'video';
   const alternatives = media.links.filter(link => link.relation === 'audio');
   const variants = media.links.filter(link => link.relation === 'video-variant')
     .sort((a, b) => Number.parseInt(a.slot, 10) - Number.parseInt(b.slot, 10));
-  const [variant, setVariant] = useState(() => lowDataConnection() ? variants[0]?.assetId ?? media.id : media.id);
+  const [requestedVariant, setVariant] = useState<string>();
+  const variant = requestedVariant ?? (saving ? variants[0]?.assetId ?? media.id : media.id);
   const [audio, setAudio] = useState('');
   const [active, setActive] = useState<'video' | 'audio'>();
   const [failed, setFailed] = useState('');
@@ -105,10 +108,11 @@ function Player({ media, locale, study }: { media: PublicMedia; locale: string; 
       <p className="learn-muted">{[selectedAudio ? t('audioData') : '', variants.length > 0 ? t('qualityData') : ''].filter(Boolean).join(' ')}</p>
     </div>}
     <div className="learn-actions">
-      {video && <Button onClick={() => { setFailed(''); setActive('video'); }} aria-pressed={active === 'video' && !activeError}>
+      {video && <Button variant={saving && selectedAudio ? 'secondary' : 'primary'}
+        onClick={() => { setFailed(''); setVariant(variant); setActive('video'); }} aria-pressed={active === 'video' && !activeError}>
         <Play size={17} aria-hidden="true" />{t('playVideo')}
       </Button>}
-      {(!video || selectedAudio) && <Button variant={video ? 'secondary' : 'primary'}
+      {(!video || selectedAudio) && <Button variant={video && !saving ? 'secondary' : 'primary'}
         onClick={() => { setFailed(''); setActive('audio'); }} aria-pressed={active === 'audio' && !activeError}>
         <Headphones size={17} aria-hidden="true" />{t(video ? 'audioVersion' : 'playAudio')}
       </Button>}
@@ -116,12 +120,12 @@ function Player({ media, locale, study }: { media: PublicMedia; locale: string; 
     <div className="learn-player-stage" data-kind={active ?? media.kind}>
       {active && activeId && !activeError ? active === 'video'
         ? <video key={activeId} controls playsInline preload="none" src={fileUrl(activeId)} {...progress}
-            poster={poster ? fileUrl(poster.assetId) : undefined} aria-label={media.title} onError={() => setFailed(activeId)}>
+            poster={poster && !saving ? fileUrl(poster.assetId) : undefined} aria-label={media.title} onError={() => setFailed(activeId)}>
             {captions.map(link => <track key={link.assetId} kind="captions" src={fileUrl(link.assetId)} srcLang={link.slot}
               label={t('captions', { language: learnerLanguageName(link.slot) })} />)}
             {t('mediaUnavailable')}
           </video>
-        : <audio key={activeId} controls preload="none" src={fileUrl(activeId)} aria-label={media.title} onError={() => setFailed(activeId)}>
+        : <audio key={activeId} controls preload="none" src={fileUrl(activeId)} {...progress} aria-label={media.title} onError={() => setFailed(activeId)}>
             {t('mediaUnavailable')}
           </audio>
         : <div className="learn-player-placeholder">

@@ -99,13 +99,13 @@ export function createAuthRoutes(store: IdentityStore, options: RouteOptions): R
   router.post('/auth/login', secure, writeAllowed, credentialsLimiter, validateInput('body', loginInput), login(false));
   router.post('/auth/admin-login', secure, writeAllowed, credentialsLimiter, validateInput('body', loginInput), login(true));
   router.post('/auth/logout', secure, writeAllowed, noBodyFields, async (request, response) => {
+    response.clearCookie(cookie.name, cookie.options);
     const tokenHash = requestTokenHash(request, cookie.name);
     if (tokenHash) {
-      const account = await store.findSession(tokenHash);
-      await store.revokeSession(tokenHash);
-      if (account?.adminScope) audit(response, 'admin_sign_out', 'success', account.id);
+      const adminActorId = await store.revokeSession(tokenHash);
+      if (adminActorId) audit(response, 'admin_sign_out', 'success', adminActorId);
     }
-    response.clearCookie(cookie.name, cookie.options).status(204).end();
+    response.status(204).end();
   });
   router.get('/admin/access', secure, session, requirePermission(administrationPermission), (_request, response) => {
     response.json({ user: publicAccount(response.locals.identity, true) });

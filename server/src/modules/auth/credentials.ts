@@ -10,7 +10,9 @@ export function isValidLogin(value: string) {
 }
 
 function isPasswordInput(value: string) {
-  return value.length > 0 && Buffer.byteLength(value, 'utf8') <= 512 && [...value].length <= 128;
+  // Reject unpaired surrogates before UTF-8 conversion can replace them with a different character.
+  return value.length > 0 && Buffer.byteLength(value, 'utf8') <= 512 &&
+    [...value].length <= 128 && !/[\ud800-\udfff]/u.test(value);
 }
 
 export function isStrongPassword(value: string) {

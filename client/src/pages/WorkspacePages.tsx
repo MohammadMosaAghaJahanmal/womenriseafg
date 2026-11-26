@@ -9,6 +9,9 @@ import { languageNames, languages, type Language } from '../i18n';
 import { usePreferences, type Theme } from '../preferences';
 import { checkApiHealth } from '../services/health';
 import { LearningPreference } from '../features/engagement/Preference';
+import { DataSavingPreference } from '../features/data-saving/DataSavingPreference';
+import { useDataSaving } from '../features/data-saving/preferences';
+import { ClearLocalLearning } from '../features/offline/OfflineControls';
 import './strings';
 import './workspace.css';
 import '../features/auth/auth.css';
@@ -29,6 +32,7 @@ export function SettingsPage() {
       </SelectField>
       <p>{t('follows')}</p>
     </Card><p className="workspace-note">{t('local')}</p>
+    <DataSavingPreference />
     <section className="auth-settings workspace-panel">
       <h2>{t('auth:clearPreferences')}</h2>
       <p>{t('auth:clearDescription')}</p>
@@ -36,6 +40,7 @@ export function SettingsPage() {
       {clearResult !== undefined && <p role="status">{t(clearResult ? 'auth:cleared' : 'auth:unavailable')}</p>}
     </section>
     <LearningPreference />
+    <ClearLocalLearning />
     <section className="auth-settings workspace-panel">
       <h2>{t('courseOpenTitle')}</h2><p>{t('courseOpenDescription')}</p>
     </section>
@@ -46,6 +51,7 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false,
 
 function StatusPage() {
   const { t } = useTranslation(['pages', 'shell']);
+  const { enabled: saving } = useDataSaving();
   const health = useQuery({
     queryKey: ['public-api-health'],
     queryFn: async ({ signal }) => { await checkApiHealth(signal); return true; },
@@ -53,10 +59,10 @@ function StatusPage() {
   });
   const success = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (health.isFetching || !success.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (saving || health.isFetching || !success.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const animation = animate(success.current, { opacity: [.45, 1] }, { duration: .18 });
     return () => animation.stop();
-  }, [health.isFetching, health.dataUpdatedAt]);
+  }, [health.isFetching, health.dataUpdatedAt, saving]);
   return <div className="workspace-page"><h1>{t('shell:status')}</h1>
     <Card className="workspace-panel workspace-status">
       <h2><Monitor size={22} aria-hidden="true"/>{t('connection')}</h2>

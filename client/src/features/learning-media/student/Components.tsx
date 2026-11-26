@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Button, StatePanel } from '../../../components/ui/Primitives';
 import { fileUrl, isMissing } from '../../courses/student/api';
-import { AvailableLanguages, BackLink, chooseTranslation, coursePath, learnerLanguageName, lessonPath, lowDataConnection } from '../../courses/student/components';
+import { AvailableLanguages, BackLink, chooseTranslation, coursePath, learnerLanguageName, lessonPath } from '../../courses/student/components';
+import { useDataSaving } from '../../data-saving/preferences';
 import { preferredName, type EducationRecord } from '../../education/api';
 import type { Collection, LearningDetail, LearningItem } from './api';
 import { learningMediaNamespace } from './strings';
@@ -66,9 +67,10 @@ export function Category({ records, item }: { records: EducationRecord[]; item: 
 
 export function StudyThumbnail({ id, kind }: { id: string | null; kind: LearningItem['kind'] }) {
   const [failed, setFailed] = useState<string>();
+  const { enabled: saving } = useDataSaving();
   const Icon = kind === 'short' ? Film : kind === 'video' ? Video : BookOpen;
   return <div className="learn-cover lm-cover" aria-hidden="true">
-    {id && id !== failed && !lowDataConnection()
+    {id && id !== failed && !saving
       ? <img src={fileUrl(id)} alt="" loading="lazy" decoding="async" onError={() => setFailed(id)} />
       : <Icon size={42} strokeWidth={1.3} />}
   </div>;

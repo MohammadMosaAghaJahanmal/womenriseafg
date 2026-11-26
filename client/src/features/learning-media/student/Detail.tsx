@@ -11,6 +11,9 @@ import { useEducationData } from '../../education/useEducationData';
 import { Recommendations } from '../../discovery/Cards';
 import type { LearningResource } from '../../engagement/local';
 import { SaveResource } from '../../engagement/SaveResource';
+import { offlineMediaFile } from '../../offline/media';
+import { OfflineSave } from '../../offline/OfflineSave';
+import { offlineResourceKey } from '../../offline/types';
 import { loadCategories, readLearning, type Collection, type LearningDetail, type StudyMedia } from './api';
 import { BackToCollection, CollectionState, ItemTags, MediaDetails, RelatedLearning } from './Components';
 import { ShortPlayer } from './ShortPlayer';
@@ -66,6 +69,8 @@ export function MediaArticle({ detail, categories, contentLanguage, feed, move }
   const playable = kind === 'video' || kind === 'audio' || kind === 'pdf';
   const study: LearningResource = { kind: item.kind === 'resource' ? 'ai' : item.kind, id: item.id, slug: item.slug,
     locale: translation.locale, title: translation.title };
+  const offlineKind = item.kind === 'resource' ? 'ai' : item.kind;
+  const offlineFile = offlineMediaFile(media);
 
   return <article className={'lm-item' + (short ? ' lm-item-short' : '')}>
     <header className="lm-item-heading">
@@ -73,7 +78,11 @@ export function MediaArticle({ detail, categories, contentLanguage, feed, move }
         <ItemTags item={item} categories={categories} />
         <Heading lang={translation.locale} dir="auto">{translation.title}</Heading>
         {translation.description && <p className="learn-prose" lang={translation.locale} dir="auto">{translation.description}</p>}
-        <div className="learning-actions"><SaveResource resource={study} /></div>
+        <div className="learning-actions"><SaveResource resource={study} />
+          {offlineFile && <OfflineSave resource={{ key: offlineResourceKey(offlineKind, item.id, translation.locale),
+            kind: offlineKind, title: translation.title, description: translation.description,
+            locale: translation.locale, file: offlineFile }} />}
+        </div>
         <ContentLanguageNotice preferred={preference} actual={translation.locale} />
       </div>
       {locales.length === 1 ? <AvailableLanguages label={t('availableLanguages')} locales={locales} />

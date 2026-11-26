@@ -3,7 +3,8 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button, SelectField, StatePanel } from '../../components/ui/Primitives';
-import { chooseTranslation, learnerLanguageName, lowDataConnection } from '../courses/student/components';
+import { chooseTranslation, learnerLanguageName } from '../courses/student/components';
+import { useDataSaving } from '../data-saving/preferences';
 import { publishedTaxonomy } from '../discovery/api';
 import { useEducationData } from '../education/useEducationData';
 import { ContinueLearning } from '../engagement/ContinueLearning';
@@ -19,6 +20,7 @@ const loadLanguages = (signal: AbortSignal) => publishedTaxonomy('languages', si
 
 function Hero({ branding }: { branding: Branding }) {
   const { t, i18n } = useTranslation(ns);
+  const { enabled: saving } = useDataSaving();
   const slogan = brandCopy(branding, i18n.language, 'slogan');
   const showDefault = !slogan || slogan === t('heroTitle') + ' ' + t('heroAccent');
   return <header className="discover-hero">
@@ -27,8 +29,10 @@ function Hero({ branding }: { branding: Branding }) {
       <p>{t('heroDescription')}</p>
       <Link to="/courses" className="discover-start"><BookOpen size={18} aria-hidden="true" />{t('start')}</Link>
     </div>
-    {!lowDataConnection() && <div className="discover-hero__art" aria-hidden="true">
-      <img src="/art/study.webp" alt="" fetchPriority="high" decoding="async" />
+    {!saving && <div className="discover-hero__art" aria-hidden="true">
+      <img src="/art/study.webp" srcSet="/art/study-480.webp 480w, /art/study.webp 1000w"
+        sizes="(max-width: 650px) 240px, (max-width: 959px) 49vw, (max-width: 1490px) 40vw, 620px"
+        width="1000" height="667" alt="" fetchPriority="high" decoding="async" />
     </div>}
   </header>;
 }

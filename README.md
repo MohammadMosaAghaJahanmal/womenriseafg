@@ -195,6 +195,16 @@ Popular courses are ranked by cumulative opens of the published course page. The
 
 Migration `011-homepage` adds `homepage_settings` and `homepage_course_opens`, and grants `homepage:manage` to the built-in administrators. The public homepage and branding are available at `/api/v1/homepage` and `/api/v1/homepage/branding`. The editor uses the protected `/api/v1/admin/homepage` endpoint. The configuration and counts share the existing MySQL database and selected images use the existing private media storage.
 
+## Offline learning and data saving
+
+Open **Downloads** and choose **Enable offline access**, or confirm **Save offline copy** from a lesson or an eligible file. Choose individual published lessons, permitted PDFs, videos, Shorts, or lesson attachments. The site checks publication and file-download permissions before transferring files. Saved PDF links use the browser's PDF support. Offline video and audio play from the local copy.
+
+Downloads shows progress, cancellation, saved copies, and an estimated storage budget. The browser can enforce a smaller limit than the app's 128 MiB per file, 384 MiB total and 512 saved copies. **Remove all downloads** removes the copies and cancels transfers. **Clear this browser’s learning data** also clears learning history, display settings, data-saving preferences and the app-managed offline cache. The browser or device controls manage installed apps, history and exported files.
+
+**Settings → Data saving** can follow the connection, stay on, or stay off. Data saving omits decorative images and thumbnails, reduces animation, and prefers smaller prepared video variants and audio-only playback where available. Media loads when the learner starts playback or confirms a download. Supply variants and transcripts in the media library using the existing off-server preparation workflow.
+
+The PWA is available from the built site on HTTPS or a supported loopback origin. The Vite development server provides online development. The service worker is enabled on explicit request and precaches only the public app shell and Downloads route. The build includes Brotli and gzip static variants. Express negotiates those variants and serves versioned assets with immutable caching, while the worker and manifest revalidate and private routes use no-store. Keep the manifest, icons, worker, fallback and compressed files with the rest of the client build.
+
 ## Repository guide
 
 - `client/src/` holds React Router layouts, shared theme and language preferences, semantic CSS tokens, UI primitives, subject discovery, administration previews and the API status view.
@@ -205,4 +215,4 @@ Migration `011-homepage` adds `homepage_settings` and `homepage_course_opens`, a
 - `AGENTS.md` records the owner's stage rules.
 - `How the complete website should look/` holds the owner's original local references. The directory is excluded from Git and build artifacts.
 
-The next planned stage is Stage 11, PWA, offline learning, and performance. It requires separate owner approval.
+The next planned stage is Stage 12, security, privacy, accessibility, and quality assurance. It requires separate owner approval.

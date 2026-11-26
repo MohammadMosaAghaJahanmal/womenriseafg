@@ -3,7 +3,9 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEve
 import { useTranslation } from 'react-i18next';
 import { Button, SelectField } from '../../../components/ui/Primitives';
 import { fileUrl } from '../../courses/student/api';
-import { learnerLanguageName, lowDataConnection } from '../../courses/student/components';
+import { learnerLanguageName } from '../../courses/student/components';
+import { Transcripts } from '../../courses/student/LessonMedia';
+import { useDataSaving } from '../../data-saving/preferences';
 import type { LearningResource } from '../../engagement/local';
 import { usePlaybackProgress } from '../../engagement/playback';
 import type { LearningItem, StudyMedia } from './api';
@@ -16,10 +18,12 @@ export function ShortPlayer({ item, media, locale, move, study }: {
   item: LearningItem; media: StudyMedia; locale: string; move?: (step: Step, fromKeyboard?: boolean) => void; study?: LearningResource;
 }) {
   const { t, i18n } = useTranslation(learningMediaNamespace);
+  const { enabled: saving } = useDataSaving();
   const variants = media.links.filter(link => link.relation === 'video-variant')
     .sort((first, second) => Number.parseInt(first.slot, 10) - Number.parseInt(second.slot, 10));
   const tracks = media.links.filter(link => link.relation === 'subtitle');
-  const [quality, setQuality] = useState(() => lowDataConnection() ? variants[0]?.assetId ?? media.id : media.id);
+  const [requestedQuality, setQuality] = useState<string>();
+  const quality = requestedQuality ?? (saving ? variants[0]?.assetId ?? media.id : media.id);
   const [selectedCaption, setSelectedCaption] = useState<string>();
   const [loaded, setLoaded] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -69,6 +73,7 @@ export function ShortPlayer({ item, media, locale, move, study }: {
     if (!player) return;
     const url = fileUrl(quality);
     if (player.getAttribute('src') !== url || error) player.setAttribute('src', url);
+    setQuality(quality);
     setLoaded(true);
     setError(false);
     void player.play().catch((failure: unknown) => {
@@ -157,6 +162,7 @@ export function ShortPlayer({ item, media, locale, move, study }: {
         <option value={media.id}>{t('original')}</option>
       </SelectField>}
     </div>
+    <Transcripts media={media} locale={locale} />
     {move && <p id={help} className="learn-muted lm-short-help">{t('playerHelp')}</p>}
   </div>;
 }

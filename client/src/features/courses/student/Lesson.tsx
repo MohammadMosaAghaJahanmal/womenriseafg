@@ -5,6 +5,9 @@ import { Link, useParams } from 'react-router-dom';
 import { useEducationData } from '../../education/useEducationData';
 import { Recommendations } from '../../discovery/Cards';
 import { LessonLearning } from '../../engagement/CourseLearning';
+import { offlineMediaFile } from '../../offline/media';
+import { OfflineSave } from '../../offline/OfflineSave';
+import { offlineResourceKey } from '../../offline/types';
 import { findLesson, type LessonResponse } from './api';
 import {
   AvailableLanguages, BackLink, chooseTranslation, ContentLanguageNotice, ContentLanguageSelect, coursePath, Curriculum, LearnerState,
@@ -74,6 +77,7 @@ export default function LessonPage() {
   const lessonLocales = lesson.translations.map(item => item.locale);
   const study = { kind: 'lesson' as const, id: lesson.id, slug: lesson.slug, parentSlug: course.slug,
     title: translation.title, locale: translation.locale };
+  const offlineFile = offlineMediaFile(media);
   return <div className="learn-page learn-lesson">
     <BackLink to={coursePath(course.slug, language.explicit)}><bdi lang={courseName.locale}>{courseName.title}</bdi></BackLink>
     <header className="learn-lesson-header">
@@ -84,6 +88,11 @@ export default function LessonPage() {
         <h1 lang={translation.locale} dir="auto">{translation.title}</h1>
         {translation.description && <p className="learn-prose" lang={translation.locale} dir="auto">{translation.description}</p>}
         <ContentLanguageNotice preferred={language.preferred} actual={translation.locale} />
+        {(translation.body.trim() || offlineFile) && <div className="learning-actions">
+          <OfflineSave resource={{ key: offlineResourceKey('lesson', lesson.id, translation.locale),
+            kind: 'lesson', title: translation.title, description: translation.description,
+            locale: translation.locale, body: translation.body, file: offlineFile }} />
+        </div>}
       </div>
       {lessonLocales.length === 1 ? <AvailableLanguages locales={lessonLocales} label={t('lessonLanguages')} />
         : <ContentLanguageSelect label={t('lessonLanguages')} locales={lessonLocales} selected={translation.locale} onSelect={language.setLanguage} />}
@@ -101,6 +110,10 @@ export default function LessonPage() {
           <ul>{resources.map(resource => <li key={resource.mediaId}>
             <FileText size={19} aria-hidden="true" /><bdi>{resource.label || resource.media.title}</bdi>
             <MediaActions media={resource.media} compact />
+            {resource.media.downloadAllowed && <OfflineSave resource={{
+              key: offlineResourceKey('resource', resource.mediaId, translation.locale), kind: 'resource',
+              title: resource.label || resource.media.title, locale: translation.locale, file: offlineMediaFile(resource.media),
+            }} />}
           </li>)}</ul>
         </section>}
         <LessonLearning course={course} item={study} />

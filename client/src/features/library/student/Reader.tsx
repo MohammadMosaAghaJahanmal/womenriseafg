@@ -7,6 +7,7 @@ import { Button, StatePanel } from '../../../components/ui/Primitives';
 import { BackLink, chooseTranslation, ContentLanguageNotice, localizedNumber, useContentLanguage } from '../../courses/student/components';
 import { useEducationData } from '../../education/useEducationData';
 import { rememberResource, savedPosition, useLearning, type LearningResource } from '../../engagement/local';
+import { BookOfflineSave } from '../../offline/BookOfflineSave';
 import { openPdf } from '../../pdf/openPdf';
 import { bookFile, bookPath, readBook, type PublicBook } from './api';
 import { BookLanguage, LibraryBack, LibraryState } from './Components';
@@ -281,6 +282,7 @@ export default function BookReader() {
     <h1 lang={title.locale} dir="auto">{title.title}</h1>
     <ContentLanguageNotice preferred={language.preferred} actual={title.locale} />
     <p className="learn-muted">{t('language')} · <BookLanguage locale={result.data.contentLanguage} /></p>
+    <BookOfflineSave book={result.data} translation={title} />
     <BookDocument key={slug} book={result.data} title={title.title} titleLanguage={title.locale} />
   </div>;
 }

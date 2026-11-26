@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { access } from 'node:fs/promises';
 import path from 'node:path';
 import express, { type Express, type Router } from 'express';
 import helmet from 'helmet';
@@ -25,6 +26,13 @@ interface AppOptions {
 }
 
 const privateRoots = /^\/(?:api|media|uploads?|storage|server|client|src|docs|node_modules)(?:\/|$)/i;
+const privateNavigation = /^\/(?:admin|account|login|register|design-preview|certificates|courses\/[^/]+\/certificate)(?:\/|$)/i;
+const fingerprintedAsset = /^assets\/[a-zA-Z0-9_.-]+-[a-zA-Z0-9_-]{8}\.(?:js|mjs|css|woff2|svg|webp|png|jpe?g)$/;
+const compressibleAsset = /^(?:index\.html|offline\.html|offline-fallback\.(?:css|js)|assets\/[a-zA-Z0-9_.-]+-[a-zA-Z0-9_-]{8}\.(?:js|mjs|css))$/;
+
+function staticCache(asset: string) {
+  return fingerprintedAsset.test(asset) ? 'public, max-age=31536000, immutable' : 'no-cache';
+}
 
 export function createApp(options: AppOptions): Express {
   const app = express();
@@ -38,6 +46,8 @@ export function createApp(options: AppOptions): Express {
         scriptSrc: ["'self'"],
         styleSrc: ["'self'"],
         fontSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        mediaSrc: ["'self'", 'blob:'],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: options.production ? [] : null,
@@ -97,7 +107,34 @@ export function createApp(options: AppOptions): Express {
       }
       next();
     });
-    app.use(express.static(publicDirectory, { index: false, redirect: false, dotfiles: 'ignore' }));
+    app.use(async (request, response, next) => {
+      if (request.method !== 'GET' && request.method !== 'HEAD') return next();
+      if (request.path === '/' && !request.accepts('html')) return next();
+      const asset = request.path === '/' ? 'index.html' : request.path.slice(1);
+      if (/\.(?:br|gz)$/.test(asset) && compressibleAsset.test(asset.slice(0, -3))) {
+        return notFound(request, response, next);
+      }
+      if (!compressibleAsset.test(asset)) return next();
+      response.vary('Accept-Encoding');
+      if (request.headers.range) return next();
+      const encoding = request.acceptsEncodings('br', 'gzip', 'identity');
+      if (encoding !== 'br' && encoding !== 'gzip') return next();
+      const compressed = path.join(publicDirectory, asset + (encoding === 'br' ? '.br' : '.gz'));
+      try {
+        await access(compressed);
+      } catch { return next(); }
+      response.type(path.extname(asset)).set('Content-Encoding', encoding).set('Cache-Control', staticCache(asset));
+      response.sendFile(compressed, { cacheControl: false, acceptRanges: false }, error => {
+        if (error) next(error);
+      });
+    });
+    app.use(express.static(publicDirectory, {
+      index: false, redirect: false, dotfiles: 'ignore',
+      setHeaders(response, filename) {
+        const asset = path.relative(publicDirectory, filename).split(path.sep).join('/');
+        response.setHeader('Cache-Control', staticCache(asset));
+      },
+    }));
     app.get('/{*path}', (request, response, next) => {
       const pathname = decodeURIComponent(request.path);
       if (/^\/assets(?:\/|$)/i.test(pathname) || pathname.split('/').some(segment => segment.includes('.')) ||
@@ -105,7 +142,8 @@ export function createApp(options: AppOptions): Express {
         next();
         return;
       }
-      response.set('Cache-Control', 'no-cache').sendFile(path.join(publicDirectory, 'index.html'));
+      response.set('Cache-Control', privateNavigation.test(pathname) ? 'no-store' : 'no-cache')
+        .sendFile(path.join(publicDirectory, 'index.html'));
     });
   }
 

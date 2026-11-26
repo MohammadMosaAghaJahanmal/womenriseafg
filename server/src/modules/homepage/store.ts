@@ -102,7 +102,10 @@ export function createHomepageStore(db: Sequelize) {
       if (page.sections.some(section => section.key === 'daily' && section.enabled)) {
         const { item } = await discovery.daily(home.language ?? home.preferred);
         if (item) {
-          if (dailyKinds.has(item.kind)) {
+          const existing = Object.values(page.content).flat().find(entry => entry.kind === item.kind && entry.id === item.id);
+          if (existing) {
+            page.content.daily = [existing];
+          } else if (dailyKinds.has(item.kind)) {
             const [candidate] = await db.transaction(transaction => reader.list(item.kind as HomepageKind,
               { ...home, ids: [item.id], limit: 1 }, transaction));
             if (candidate) page.content.daily = [candidate.item];

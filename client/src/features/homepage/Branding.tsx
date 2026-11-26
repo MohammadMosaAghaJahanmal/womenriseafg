@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { BookOpenText } from 'lucide-react';
 import { fileUrl } from '../courses/student/api';
+import { useOnlineStatus } from '../offline/online';
 import { loadBranding, type Branding } from './api';
 import './branding.css';
 
@@ -13,21 +14,23 @@ const BrandingContext = createContext<{ branding: Branding; refresh: () => void 
 export function BrandingProvider({ children }: { children: ReactNode }) {
   const [branding, setBranding] = useState(defaultBranding);
   const [revision, setRevision] = useState(0);
+  const online = useOnlineStatus();
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   useEffect(() => {
+    if (!online) return;
     const controller = new AbortController();
     void loadBranding(controller.signal).then(value => {
       if (!controller.signal.aborted) setBranding(value);
     }, () => undefined);
     return () => controller.abort();
-  }, [revision]);
+  }, [revision, online]);
   useEffect(() => {
     const icon = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
     if (!icon) return;
-    icon.href = branding.faviconId ? fileUrl(branding.faviconId) : defaultFavicon;
-    if (branding.faviconId) icon.removeAttribute('type');
+    icon.href = online && branding.faviconId ? fileUrl(branding.faviconId) : defaultFavicon;
+    if (online && branding.faviconId) icon.removeAttribute('type');
     else icon.type = 'image/svg+xml';
-  }, [branding.faviconId]);
+  }, [branding.faviconId, online]);
   return <BrandingContext.Provider value={{ branding, refresh }}>{children}</BrandingContext.Provider>;
 }
 
@@ -36,7 +39,8 @@ export function useBranding() {
 }
 
 export function BrandLogo({ id }: { id: string | null }) {
-  return id ? <img src={fileUrl(id)} className="site-brand-image" alt="" width="38" height="38" decoding="async" />
+  const online = useOnlineStatus();
+  return online && id ? <img src={fileUrl(id)} className="site-brand-image" alt="" width="38" height="38" decoding="async" />
     : <BookOpenText size={23} strokeWidth={1.8} aria-hidden="true" />;
 }
 

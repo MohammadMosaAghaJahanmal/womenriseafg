@@ -58,3 +58,9 @@ html[dir=rtl] :is(h1,h2,h3,p,button,a,label,span) { letter-spacing: normal; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+html[data-data-saving="on"] :where(*, *::before, *::after) {
+  scroll-behavior: auto !important;
+  animation-duration: .01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important;
+}

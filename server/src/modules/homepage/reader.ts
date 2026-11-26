@@ -167,9 +167,16 @@ export function homepageReader(db: Sequelize) {
       WHERE e.id IN (:ids) ${publicEducationEntry} AND ${publishedLocale('t.locale')}`, {
       type: QueryTypes.SELECT, transaction, replacements: { ids },
     });
+    const grouped = new Map<string, LocalizedTitle[]>();
+    for (const { id, locale, title } of rows) {
+      const group = grouped.get(id);
+      if (group) group.push({ locale, title });
+      else grouped.set(id, [{ locale, title }]);
+    }
+    const labels = new Map([...grouped].map(([id, copies]) => [id, preferredCopy(copies, preferred)]));
     for (const candidate of items) {
-      const subject = preferredCopy(rows.filter(row => row.id === candidate.subjectId), preferred);
-      const level = preferredCopy(rows.filter(row => row.id === candidate.levelId), preferred);
+      const subject = candidate.subjectId ? labels.get(candidate.subjectId) : undefined;
+      const level = candidate.levelId ? labels.get(candidate.levelId) : undefined;
       if (subject) candidate.item.subject = { locale: subject.locale, title: subject.title };
       if (level) candidate.item.level = { locale: level.locale, title: level.title };
     }

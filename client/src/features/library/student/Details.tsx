@@ -7,6 +7,7 @@ import { preferredName, type EducationRecord } from '../../education/api';
 import { useEducationData } from '../../education/useEducationData';
 import { Recommendations } from '../../discovery/Cards';
 import { SaveResource } from '../../engagement/SaveResource';
+import { BookOfflineSave } from '../../offline/BookOfflineSave';
 import { bookTaxonomy, readBook } from './api';
 import { BookCover, BookLanguage, BookReadActions, LibraryBack, LibraryState } from './Components';
 import { libraryNamespace } from './strings';
@@ -57,7 +58,9 @@ export default function BookDetails() {
         {book.author && <p><bdi>{book.author}</bdi></p>}
         <BookReadActions book={book} detailsLanguage={language.explicit} />
         <div className="learning-actions"><SaveResource resource={{ kind: 'book', id: book.id, slug: book.slug,
-          title: description.title, locale: description.locale }} /></div>
+          title: description.title, locale: description.locale }} />
+          <BookOfflineSave book={book} translation={description} />
+        </div>
       </div>
     </header>
     <div className="library-book-info">

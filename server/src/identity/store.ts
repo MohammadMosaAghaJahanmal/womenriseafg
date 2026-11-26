@@ -132,7 +132,18 @@ export function createIdentityStore(db: Sequelize) {
     },
 
     async revokeSession(tokenHash: string) {
-      await Session.destroy({ where: { tokenHash } });
+      return db.transaction(async transaction => {
+        const session = await Session.findByPk(tokenHash, {
+          attributes: ['tokenHash', 'userId', 'expiresAt', 'adminScope'],
+          lock: transaction.LOCK.UPDATE,
+          transaction,
+        });
+        if (!session) return null;
+        const adminActorId = session.getDataValue('adminScope') && session.getDataValue('expiresAt').getTime() > Date.now()
+          ? session.getDataValue('userId') : null;
+        await session.destroy({ transaction });
+        return adminActorId;
+      });
     },
 
     async bootstrapAdministrator(login: string, passwordHash: string) {

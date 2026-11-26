@@ -571,3 +571,59 @@ The stage uses the existing Node, MySQL, same-origin API and local media setup. 
 Stage 11 covers PWA, offline learning, and performance. It requires separate approval.
 
 **STAGE 10 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**
+
+## Stage 11 — PWA, offline learning, and performance
+
+**Completed on 26 November 2026.** Learners can enable offline access, save individual lessons and permitted files, and open or clear those copies while disconnected. Installation is optional.
+
+### Implementation and preserved functionality
+
+- Vite PWA and Workbox provide a manifest, app icons, an explicitly enabled app shell, and an offline fallback in English, Pashto, and Dari. The fallback opens Downloads. Guest learning and the published online catalogs continue to work.
+- Learners can save lesson text and selected files with valid download permissions. Downloads shows transfer progress, cancellation, device storage estimates and saved copies. The app opens local PDF copies through the browser or exports them. Video and audio play from the local copy.
+- Shared-device controls can clear downloads, learning progress, bookmarks, display preferences, data-saving preferences, and the app-managed offline cache. Learners can also remove individual items or clear downloads alone. The confirmation directs them to browser and device controls for installed apps, history and exports.
+- The localized data-saving setting supports automatic, always-on and off. It omits decorative images and thumbnails, reduces animation, prefers the lowest prepared video variant, and prioritizes audio-only playback where available. Learners start media explicitly. Transcripts and known file sizes remain available.
+- Homepage, Explore and Daily Learning load on demand. The mobile hero uses a 19,982-byte responsive image alongside the 72,866-byte full image. Homepage reads reuse a matching Daily Learning card and index translated taxonomy labels once per response. All 12 original design references matched their SHA-256 baseline.
+
+### Files and database
+
+| Area | Changes |
+| --- | --- |
+| `client/src/sw.ts`, `client/src/features/pwa/` and public icons and fallback | Explicit offline shell setup, optional installation, localized fallback and cache recovery |
+| `client/vite.config.ts`, package manifests and lockfile | Vite PWA, Workbox, static-shell selection and Brotli and gzip build output |
+| `client/src/features/offline/`, learner navigation, Settings and lesson, media and book entry points | IndexedDB records, progress, cancellation, permission-checked save actions, local playback and shared-device clearing |
+| `client/src/features/data-saving/`, homepage, media players and covers | Localized settings, lower-bandwidth playback, lazy routes and responsive art |
+| `server/src/app.ts`, homepage reader and store, and `server/tests/foundation.test.ts` | Static compression and caching, private navigation protection, and focused read optimization |
+| `README.md` and `docs/PROGRESS.md` | Operating instructions and verification record |
+
+IndexedDB stores summaries, file contents and transactional download reservations in the browser. MySQL requires no Stage 11 migration. The same-origin site uses the existing local media storage and publication controls.
+
+### Security and privacy
+
+The worker allowlists the public application files and localized fallback. API, account, administrator and private responses stay out of CacheStorage. Fingerprinted assets are immutable, the worker and manifest revalidate, and protected pages and APIs use no-store. Downloads use the existing permission-checked same-origin attachment routes with credentials and referrers omitted. Responses must be valid attachments with an allowed media type. Cancelled, interrupted or quota-failed transfers leave partial files out of the saved list. Clearing invalidates pending writes across tabs. Storage estimates are approximate and the browser can evict local data. [MDN StorageManager estimate](https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/estimate)
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| `npm run lint`, `npm run typecheck`, `git diff --check` | Passed |
+| `npm test` on isolated MySQL 8.0.31 | 31 passed, 0 failed, 0 skipped. Included static cache headers, compressed representations, private navigation and media range behavior |
+| `npm run build` | Both workspaces built. Vite PWA emitted 20 allowlisted app-shell entries totaling 950.26 KiB decoded. Vite reported upstream Zod annotation notices and bundle-size warnings |
+| `npm run dev` and compiled `node app.js` on local HTTPS | Vite served Downloads and proxied API readiness. The compiled site served its worker, manifest and offline routes. The main script transfer was 177,559 bytes with Brotli and 569,888 bytes with identity encoding. Worker revalidation and no-store account and API headers were verified |
+| Chrome guest journey on compiled HTTPS | Verified opt-in, restricted-file denial, saving a lesson, PDF and video, cold offline navigation and reload, PDF export bytes, offline video seeking, cross-tab deletion, reconnect, a user-triggered simulated install event, clearing while offline and a quota check that prevented transfer |
+| Focused Chromium storage and worker checks | Verified empty startup, streaming progress, interrupted transfer and retry, quota rollback, redirect and foreign-route rejection, concurrent writes and clears, cache privacy and recovery after cache eviction |
+| Localized responsive and accessibility checks | 24 Downloads layouts across eight viewport sizes and three locales, nine axe scans for Downloads and Settings, and three localized cold offline fallbacks passed |
+| `npm audit` and `npm audit --omit=dev` | Both reported zero known vulnerabilities |
+
+The cold Chrome mobile test used a 390 × 844 viewport, 200 ms latency, 200 KiB/s download, 90 KiB/s upload, and 4× CPU throttling. With the HTTP cache disabled and the worker bypassed, data saving reduced transfer from 503,667 to 482,976 bytes and LCP from 3.192 to 2.784 seconds. Reserving homepage height reduced measured CLS from 0.233 to 0.092. These are local laboratory measurements. [Chrome DevTools network throttling](https://developer.chrome.com/docs/devtools/network/reference)
+
+The development server, compiled application, HTTPS gateway, and isolated MySQL instance were stopped. Their loopback ports were verified closed and temporary credentials removed.
+
+### Hosting and known limits
+
+The built site uses the existing single-host Node and MySQL architecture. Deploy the manifest, worker, fallback, hashed assets and compressed variants together. The worker needs a secure browser context. Downloads are capped at 128 MiB per file, 384 MiB total and 512 entries, subject to available browser storage. Live cPanel and Passenger deployment, native installation on an end-user device, browsers beyond Chrome and performance under live traffic remain unverified. The existing dialog library emits a blocked scroll-lock style warning under the production policy. The tested dialogs operated normally. [MDN Using Service Workers](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers)
+
+### Next stage
+
+Stage 12 covers security, privacy, accessibility, and quality assurance. It requires separate approval.
+
+**STAGE 11 COMPLETED. I HAVE STOPPED WORKING. WAITING FOR YOUR APPROVAL BEFORE STARTING THE NEXT STAGE.**

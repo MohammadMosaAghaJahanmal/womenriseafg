@@ -3,7 +3,7 @@ import { i18n } from '../i18n';
 const en = {
   home: 'Home', explore: 'Explore', courses: 'Courses', videos: 'Videos', shorts: 'Shorts',
   library: 'Digital library', libraryShort: 'Library', ai: 'AI learning', paths: 'Learning paths',
-  saved: 'Saved', learning: 'My learning', settings: 'Settings', status: 'System status',
+  saved: 'Saved', learning: 'My learning', downloads: 'Downloads', settings: 'Settings', status: 'System status',
   admin: 'Administration', adminPreview: 'Administration preview', academy: 'Learning workspace', overview: 'Overview', navigation: 'Student navigation',
   primaryNav: 'Quick navigation', browse: 'Workspace', footerNav: 'Footer navigation',
   search: 'Search learning content', quizzes: 'Quizzes', daily: 'Daily learning', certificates: 'Certificates',
@@ -18,7 +18,7 @@ type Messages = typeof en;
 const ps: Messages = {
   home: 'کور', explore: 'سپړنه', courses: 'کورسونه', videos: 'ویډیوګانې', shorts: 'لنډې ویډیوګانې',
   library: 'ډیجیټلي کتابتون', libraryShort: 'کتابتون', ai: 'مصنوعي ځیرکتیا', paths: 'د زده کړې لارې',
-  saved: 'خوندي شوي', learning: 'زما زده کړه', settings: 'امستنې', status: 'د سیسټم حالت',
+  saved: 'خوندي شوي', learning: 'زما زده کړه', downloads: 'ښکته شوي توکي', settings: 'امستنې', status: 'د سیسټم حالت',
   admin: 'اداره', adminPreview: 'د ادارې مخکتنه', academy: 'د زده کړې چاپېریال', overview: 'ټولیزه کتنه', navigation: 'د زده کوونکو لارښود',
   primaryNav: 'د پاڼو لنډلارې', browse: 'چاپېریال', footerNav: 'د پاڼې په پای کې لېنکونه',
   search: 'ښوونیز مواد ولټوئ', quizzes: 'ازموینې', daily: 'ورځنۍ زده‌کړه', certificates: 'سندونه',
@@ -31,7 +31,7 @@ const ps: Messages = {
 const fa: Messages = {
   home: 'خانه', explore: 'کاوش', courses: 'دوره‌ها', videos: 'ویدیوها', shorts: 'ویدیوهای کوتاه',
   library: 'کتابخانۀ دیجیتال', libraryShort: 'کتابخانه', ai: 'یادگیری هوش مصنوعی', paths: 'مسیرهای یادگیری',
-  saved: 'ذخیره‌شده‌ها', learning: 'یادگیری من', settings: 'تنظیمات', status: 'وضعیت سیستم',
+  saved: 'ذخیره‌شده‌ها', learning: 'یادگیری من', downloads: 'دانلودها', settings: 'تنظیمات', status: 'وضعیت سیستم',
   admin: 'مدیریت', adminPreview: 'پیش‌نمایش مدیریت', academy: 'محیط یادگیری', overview: 'نمای کلی', navigation: 'راهنمای صفحات شاگردان',
   primaryNav: 'دسترسی سریع', browse: 'محیط یادگیری', footerNav: 'پیوندهای پایین صفحه',
   search: 'جستجوی محتوای یادگیری', quizzes: 'آزمون‌ها', daily: 'یادگیری روزانه', certificates: 'گواهی‌ها',
